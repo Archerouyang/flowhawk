@@ -1,0 +1,47 @@
+# Quant Research Configuration
+
+# Data sources
+data_sources:
+  longbridge:
+    enabled: true
+    cli_path: ~/.local/bin/longbridge
+    cache_dir: ./data/cache/longbridge
+
+  yahoo:
+    enabled: true
+    cache_dir: ./data/cache/yahoo
+
+  fmp:
+    enabled: true
+    # API key loaded from FMP_API_KEY env var or .env file
+    base_url: https://financialmodelingprep.com/api/v3
+    cache_dir: ./data/cache/fmp
+
+# Paths
+data:
+  raw_dir: ./data/raw
+  processed_dir: ./data/processed
+  cache_dir: ./data/cache
+
+# Research parameters
+research:
+  default_market: US
+  default_period: 2y  # historical data period
+  benchmark: SPY
+
+# Signal parameters (placeholders, to be tuned)
+signals:
+  technical:
+    ma_short: 20
+    ma_long: 60
+    rsi_period: 14
+    rsi_overbought: 70
+    rsi_oversold: 30
+    macd_fast: 12
+    macd_slow: 26
+    macd_signal: 9
+
+  fundamental:
+    min_roe: 0.15
+    max_pe: 25
+    min_market_cap_b: 10
