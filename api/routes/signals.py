@@ -2,6 +2,7 @@
 
 from datetime import date
 
+import polars as pl
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -45,33 +46,50 @@ class SignalResponse(BaseModel):
 
 
 @router.post("/signals", response_model=SignalResponse)
-async def generate_signals(request: SignalRequest):
+async def generate_signals(request: SignalRequest) -> SignalResponse:
     """Generate LEAPS trade signals through full pipeline."""
     snapshot = generate_options_snapshot(
         request.symbols, date.today(), num_contracts_per_symbol=30
     )
 
     anomaly_df = OptionsAnomalyScreener().screen(snapshot)
-    leaps_df = LEAPSSelector().select(anomaly_df)
+
+    # Stage 2: Technical filter placeholder
+    # TODO: integrate real stock technical data from FMP
+    tech_df = pl.DataFrame(
+        {
+            "symbol": request.symbols,
+            "technical_score": [0.5] * len(request.symbols),
+        }
+    )
+
+    trade_signals = LEAPSSelector().select(anomaly_df, tech_df)
 
     signals = []
-    for row in leaps_df.iter_rows(named=True):
+    for ts in trade_signals:
+        dte_val = (
+            (ts.expiration - date.today()).days
+            if isinstance(ts.expiration, date)
+            else 180
+        )
         signals.append(
             SignalResult(
-                symbol=row["symbol"],
-                option_type=row["option_type"],
-                strike=row["strike"],
-                expiration=row["expiration"].isoformat(),
-                last_price=row["last_price"],
-                delta=row["delta"],
-                gamma=row["gamma"],
-                theta=row["theta"],
-                vega=row["vega"],
-                implied_volatility=row["implied_volatility"],
-                voi_ratio=row["voi_ratio"],
-                leaps_score=row["leaps_score"],
-                theta_price_ratio=row["theta_price_ratio"],
-                dte=row["dte"],
+                symbol=ts.symbol,
+                option_type="C" if ts.direction.value == "long_call" else "P",
+                strike=ts.strike,
+                expiration=ts.expiration.isoformat()
+                if isinstance(ts.expiration, date)
+                else str(ts.expiration),
+                last_price=ts.entry_price,
+                delta=ts.delta,
+                gamma=0.0,  # TODO: add to TradeSignal model
+                theta=ts.theta,
+                vega=0.0,  # TODO: add to TradeSignal model
+                implied_volatility=0.3,  # TODO: add to TradeSignal model
+                voi_ratio=ts.anomaly_score * 5,  # approx
+                leaps_score=ts.confidence_score,
+                theta_price_ratio=abs(ts.theta) / (ts.entry_price or 1e-9),
+                dte=dte_val,
             )
         )
 
