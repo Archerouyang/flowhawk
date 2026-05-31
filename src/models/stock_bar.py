@@ -1,4 +1,5 @@
 """Stock OHLCV bar data model."""
+
 from dataclasses import dataclass
 from datetime import date
 

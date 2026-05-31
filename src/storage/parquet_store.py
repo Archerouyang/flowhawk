@@ -1,4 +1,5 @@
 """Parquet-based local storage."""
+
 from datetime import date
 from pathlib import Path
 
