@@ -24,8 +24,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ## 1. Clone & Setup
 
 ```bash
-git clone https://github.com/Archerouyang/flowhawk.git
-cd flowhawk
+git clone https://github.com/Archerouyang/flowhawk.git ~/projects/flowhawk
+cd ~/projects/flowhawk
 ```
 
 ### Python backend

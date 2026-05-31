@@ -44,7 +44,7 @@ FlowHawk
 
 ### Backend
 ```bash
-cd ~/projects/quantResearch
+cd ~/projects/flowhawk
 uv sync --all-extras
 cp .env.example .env
 # Edit .env with your API keys
