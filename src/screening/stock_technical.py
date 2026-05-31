@@ -137,7 +137,7 @@ class StockTechnicalScreener:
         if avg_loss == 0:
             return 100.0
         rs = avg_gain / avg_loss
-        return 100.0 - (100.0 / (1.0 + rs))
+        return float(100.0 - (100.0 / (1.0 + rs)))
 
     @staticmethod
     def _compute_atr(df: pl.DataFrame, period: int = 14) -> float:
