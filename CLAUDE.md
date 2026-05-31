@@ -1,59 +1,62 @@
-# Quant Research
+# Options Anomaly Screener
 
-量化选股 + 长期/波段交易信号研究与回测。
+基于期权异常信号的 LEAPS 交易筛选系统。
 
 ## 数据源
 
 | 源 | 用途 | 状态 |
 |----|------|------|
-| Longbridge | 实时行情、持仓、港股/A股 | 已配置 |
-| Yahoo Finance | 美股历史数据 | 已配置 |
-| FMP | 基本面数据、财报 | 已配置 |
+| Theta Data | 期权 EOD 快照 + Greeks | 需订阅 (~$25/月) |
+| FMP | 股票 K 线 + 新闻 | 需 API Key |
 
 ## 目录结构
 
 ```
 quantResearch/
+├── src/                  # 核心源码
+│   ├── data_sources/    # 数据源适配器
+│   ├── screening/       # 三层筛选引擎
+│   ├── models/          # 数据模型
+│   └── storage/         # Parquet 存储
+├── dashboard/           # Streamlit 可视化
+│   └── pages/           # 各功能页面
+├── scripts/             # CLI 工具
 ├── data/                # 数据存储
-│   ├── raw/            # 原始下载
-│   ├── processed/      # 清洗后
-│   └── cache/          # API 缓存
-├── data_sources/       # 数据源适配器
-├── signals/            # 信号生成
-│   ├── technical/      # 技术面
-│   ├── fundamental/    # 基本面
-│   └── macro/          # 宏观（扩展）
-├── models/             # 选股模型
-├── backtest/           # 回测引擎
-├── notebooks/          # 研究笔记本
-└── config.yaml         # 全局配置
+└── docs/adr/            # 架构决策记录
 ```
 
-## Agent skills
+## Agent Skills
 
-### Issue tracker
-
+### Issue Tracker
 Issues tracked on GitHub. See `docs/agents/issue-tracker.md`.
 
-### Triage labels
-
+### Triage Labels
 Default canonical labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
 
-### Domain docs
-
-Single-context repo. Domain docs live at `CONTEXT.md` (when created) and `docs/adr/`. See `docs/agents/domain.md`.
+### Domain Docs
+Single-context repo. Domain docs live at `CONTEXT.md` and `docs/adr/`.
 
 ## Quick Start
 
 ```bash
 cd ~/projects/quantResearch
-uv sync  # install dependencies from pyproject.toml
+uv sync
+cp .env.example .env
+# 编辑 .env 填入 API Key
+uv run streamlit run dashboard/app.py
 ```
 
 ## Development
 
 - **Package manager**: `uv` (Astral)
-- **Python version**: 3.11.9 (fixed in `.python-version`)
+- **Python version**: 3.11.9
 - **Add dependency**: `uv add <package>`
 - **Run script**: `uv run python <script.py>`
-- **Jupyter**: `uv run jupyter lab`
+- **Lint**: `uv run ruff check src/`
+- **Test**: `uv run pytest`
+
+## CI / CD
+
+- 所有变更通过 PR 提交
+- CI: ruff + mypy + pytest
+- CODEOWNERS: @archer
