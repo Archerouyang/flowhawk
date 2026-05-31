@@ -1,4 +1,5 @@
 """Backtest API routes."""
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -7,6 +8,7 @@ router = APIRouter()
 
 class BacktestRequest(BaseModel):
     """Backtest request parameters."""
+
     strategy: str = "V/OI Breakout"
     start_date: str = "2025-06-01"
     end_date: str = "2025-05-31"
@@ -16,6 +18,7 @@ class BacktestRequest(BaseModel):
 
 class BacktestMetrics(BaseModel):
     """Backtest performance metrics."""
+
     total_return_pct: float
     max_drawdown_pct: float
     sharpe_ratio: float
@@ -25,6 +28,7 @@ class BacktestMetrics(BaseModel):
 
 class BacktestResponse(BaseModel):
     """Backtest response."""
+
     metrics: BacktestMetrics
     equity_curve: list[dict]
 

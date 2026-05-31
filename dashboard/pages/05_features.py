@@ -1,4 +1,5 @@
 """Features page — mine and analyze predictive features."""
+
 import streamlit as st
 import plotly.express as px
 
@@ -9,22 +10,39 @@ st.markdown("## ⛏️ Feature Mining")
 # Feature categories
 feature_groups = {
     "Options Surface": [
-        "voi_ratio", "premium", "spread_ratio", "iv_skew",
-        "term_structure_slope", "put_call_ratio",
+        "voi_ratio",
+        "premium",
+        "spread_ratio",
+        "iv_skew",
+        "term_structure_slope",
+        "put_call_ratio",
     ],
     "Greeks": [
-        "delta", "gamma", "theta", "vega", "charm", "vanna",
+        "delta",
+        "gamma",
+        "theta",
+        "vega",
+        "charm",
+        "vanna",
     ],
     "Technical": [
-        "rsi_14", "ma_20_cross", "ma_50_cross", "atr_14",
-        "bollinger_position", "macd_histogram",
+        "rsi_14",
+        "ma_20_cross",
+        "ma_50_cross",
+        "atr_14",
+        "bollinger_position",
+        "macd_histogram",
     ],
     "Sentiment": [
-        "news_sentiment_score", "social_mention_velocity",
-        "insider_buy_ratio", "institutional_flow",
+        "news_sentiment_score",
+        "social_mention_velocity",
+        "insider_buy_ratio",
+        "institutional_flow",
     ],
     "Macro": [
-        "vix_level", "yield_curve_slope", "dxy_trend",
+        "vix_level",
+        "yield_curve_slope",
+        "dxy_trend",
     ],
 }
 
@@ -50,8 +68,14 @@ st.subheader("📈 Feature Importance (Mock)")
 
 # Mock feature importance data
 features = [
-    "voi_ratio", "iv_rank", "delta", "theta_price_ratio",
-    "rsi_14", "spread_ratio", "news_sentiment", "atr_14",
+    "voi_ratio",
+    "iv_rank",
+    "delta",
+    "theta_price_ratio",
+    "rsi_14",
+    "spread_ratio",
+    "news_sentiment",
+    "atr_14",
 ]
 importance = [0.28, 0.22, 0.18, 0.12, 0.08, 0.06, 0.04, 0.02]
 
@@ -75,4 +99,6 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-st.info("Feature importance requires labeled training data and a fitted model. Connect to backtest results to generate real rankings.")
+st.info(
+    "Feature importance requires labeled training data and a fitted model. Connect to backtest results to generate real rankings."
+)

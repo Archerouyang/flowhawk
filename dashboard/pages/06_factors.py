@@ -1,4 +1,5 @@
 """Factors page — IC analysis and correlation research."""
+
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
@@ -37,21 +38,25 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-st.markdown("**Interpretation:** Positive IC means the factor predicts future returns. Error bars show IC standard deviation (stability).")
+st.markdown(
+    "**Interpretation:** Positive IC means the factor predicts future returns. Error bars show IC standard deviation (stability)."
+)
 
 st.divider()
 st.subheader("🔥 Factor Correlation Matrix")
 
 # Mock correlation matrix
-corr_matrix = np.array([
-    [1.00, 0.15, -0.05, 0.22, 0.08, 0.03, -0.12],
-    [0.15, 1.00, 0.35, 0.18, -0.10, 0.25, 0.05],
-    [-0.05, 0.35, 1.00, 0.40, 0.12, 0.08, 0.15],
-    [0.22, 0.18, 0.40, 1.00, 0.05, 0.10, 0.20],
-    [0.08, -0.10, 0.12, 0.05, 1.00, 0.45, 0.03],
-    [0.03, 0.25, 0.08, 0.10, 0.45, 1.00, -0.08],
-    [-0.12, 0.05, 0.15, 0.20, 0.03, -0.08, 1.00],
-])
+corr_matrix = np.array(
+    [
+        [1.00, 0.15, -0.05, 0.22, 0.08, 0.03, -0.12],
+        [0.15, 1.00, 0.35, 0.18, -0.10, 0.25, 0.05],
+        [-0.05, 0.35, 1.00, 0.40, 0.12, 0.08, 0.15],
+        [0.22, 0.18, 0.40, 1.00, 0.05, 0.10, 0.20],
+        [0.08, -0.10, 0.12, 0.05, 1.00, 0.45, 0.03],
+        [0.03, 0.25, 0.08, 0.10, 0.45, 1.00, -0.08],
+        [-0.12, 0.05, 0.15, 0.20, 0.03, -0.08, 1.00],
+    ]
+)
 
 fig_heat = go.Figure(
     data=go.Heatmap(
@@ -74,4 +79,6 @@ fig_heat.update_layout(
 )
 st.plotly_chart(fig_heat, use_container_width=True)
 
-st.info("Factor analysis requires historical factor values and forward returns. Integrate with backtest engine to compute real IC and correlation matrices.")
+st.info(
+    "Factor analysis requires historical factor values and forward returns. Integrate with backtest engine to compute real IC and correlation matrices."
+)

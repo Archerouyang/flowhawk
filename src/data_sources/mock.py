@@ -1,4 +1,5 @@
 """Mock data generator for development without API subscriptions."""
+
 import random
 from datetime import date, timedelta
 
@@ -53,24 +54,26 @@ def generate_options_snapshot(
             vega = rng.uniform(0.01, 2.0)
             iv = rng.uniform(0.15, 0.80)
 
-            records.append({
-                "symbol": sym,
-                "option_type": option_type,
-                "strike": strike,
-                "expiration": expiration,
-                "bid": bid,
-                "ask": ask,
-                "last_price": last_price,
-                "volume": volume,
-                "open_interest": open_interest,
-                "delta": round(delta, 3),
-                "gamma": round(gamma, 4),
-                "theta": round(theta, 4),
-                "vega": round(vega, 4),
-                "implied_volatility": round(iv, 4),
-                "underlying_price": round(underlying_price, 2),
-                "snapshot_date": snapshot_date,
-            })
+            records.append(
+                {
+                    "symbol": sym,
+                    "option_type": option_type,
+                    "strike": strike,
+                    "expiration": expiration,
+                    "bid": bid,
+                    "ask": ask,
+                    "last_price": last_price,
+                    "volume": volume,
+                    "open_interest": open_interest,
+                    "delta": round(delta, 3),
+                    "gamma": round(gamma, 4),
+                    "theta": round(theta, 4),
+                    "vega": round(vega, 4),
+                    "implied_volatility": round(iv, 4),
+                    "underlying_price": round(underlying_price, 2),
+                    "snapshot_date": snapshot_date,
+                }
+            )
 
     return pl.DataFrame(records)
 
@@ -99,15 +102,17 @@ def generate_stock_kline(
         low_p = min(open_p, close_p) * (1 - abs(rng.gauss(0, 0.01)))
         volume = int(rng.gauss(1e6, 3e5))
 
-        records.append({
-            "date": day,
-            "symbol": symbol,
-            "open": round(open_p, 2),
-            "high": round(high_p, 2),
-            "low": round(low_p, 2),
-            "close": round(close_p, 2),
-            "volume": max(0, volume),
-        })
+        records.append(
+            {
+                "date": day,
+                "symbol": symbol,
+                "open": round(open_p, 2),
+                "high": round(high_p, 2),
+                "low": round(low_p, 2),
+                "close": round(close_p, 2),
+                "volume": max(0, volume),
+            }
+        )
 
         price = close_p
 

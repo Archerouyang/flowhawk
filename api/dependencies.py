@@ -1,4 +1,5 @@
 """Shared FastAPI dependencies."""
+
 from functools import lru_cache
 
 from src.config import get_config

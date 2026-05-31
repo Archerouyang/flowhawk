@@ -63,7 +63,7 @@ export default function LiveTradingPage() {
     (sum, p) => sum + p.entry * p.qty * 100,
     0
   );
-  const pnlPct = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+  void totalPnL; // used in metrics above
 
   return (
     <div className="space-y-6">

@@ -1,4 +1,5 @@
 """Trade signals API routes."""
+
 from datetime import date
 
 from fastapi import APIRouter
@@ -13,11 +14,13 @@ router = APIRouter()
 
 class SignalRequest(BaseModel):
     """Signal generation request."""
+
     symbols: list[str] = ["AAPL", "TSLA", "NVDA", "MSFT", "AMZN"]
 
 
 class SignalResult(BaseModel):
     """Trade signal result."""
+
     symbol: str
     option_type: str
     strike: float
@@ -36,6 +39,7 @@ class SignalResult(BaseModel):
 
 class SignalResponse(BaseModel):
     """Signal generation response."""
+
     count: int
     signals: list[SignalResult]
 
@@ -43,7 +47,9 @@ class SignalResponse(BaseModel):
 @router.post("/signals", response_model=SignalResponse)
 async def generate_signals(request: SignalRequest):
     """Generate LEAPS trade signals through full pipeline."""
-    snapshot = generate_options_snapshot(request.symbols, date.today(), num_contracts_per_symbol=30)
+    snapshot = generate_options_snapshot(
+        request.symbols, date.today(), num_contracts_per_symbol=30
+    )
 
     anomaly_df = OptionsAnomalyScreener().screen(snapshot)
     leaps_df = LEAPSSelector().select(anomaly_df)

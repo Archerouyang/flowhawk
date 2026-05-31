@@ -47,7 +47,7 @@ function generateEquityCurve(days: number) {
 
 export default function BacktestPage() {
   const [hasRun, setHasRun] = useState(false);
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<{ date: string; equity: number; drawdown: number }[]>([]);
 
   const handleRun = () => {
     setHasRun(true);

@@ -1,4 +1,5 @@
 """Strategies page — compare and manage trading strategies."""
+
 import streamlit as st
 
 st.set_page_config(page_title="Strategies | FlowHawk", layout="wide")
@@ -53,7 +54,7 @@ for s in strategies:
                 f"""
                 <div style="background:{status_color}22;border:1px solid {status_color};
                             padding:0.5rem 1rem;border-radius:6px;text-align:center;">
-                    <span style="color:{status_color};font-weight:600;">{s['status']}</span>
+                    <span style="color:{status_color};font-weight:600;">{s["status"]}</span>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -69,6 +70,15 @@ st.text_input("Strategy Name")
 st.text_area("Description")
 st.multiselect(
     "Select Signal Factors",
-    ["V/OI Ratio", "IV Rank", "Delta", "Theta/Price", "RSI", "ATR", "News Sentiment", "Earnings"],
+    [
+        "V/OI Ratio",
+        "IV Rank",
+        "Delta",
+        "Theta/Price",
+        "RSI",
+        "ATR",
+        "News Sentiment",
+        "Earnings",
+    ],
 )
 st.button("Save Strategy", type="primary")

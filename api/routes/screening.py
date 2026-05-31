@@ -1,4 +1,5 @@
 """Options screening API routes."""
+
 from datetime import date
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -11,6 +12,7 @@ router = APIRouter()
 
 class ScreenParams(BaseModel):
     """Screening request parameters."""
+
     symbols: list[str] = ["AAPL", "TSLA", "NVDA", "MSFT", "AMZN"]
     min_voi_ratio: float = 3.0
     min_premium: float = 100_000
@@ -22,6 +24,7 @@ class ScreenParams(BaseModel):
 
 class ScreenResult(BaseModel):
     """Screening result item."""
+
     symbol: str
     option_type: str
     strike: float
@@ -37,6 +40,7 @@ class ScreenResult(BaseModel):
 
 class ScreenResponse(BaseModel):
     """Screening response."""
+
     count: int
     candidates: list[ScreenResult]
 

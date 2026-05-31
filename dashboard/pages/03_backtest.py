@@ -1,4 +1,5 @@
 """Backtest page — strategy historical validation."""
+
 from datetime import date, timedelta
 
 import streamlit as st
@@ -15,7 +16,12 @@ with st.sidebar:
 
     strategy = st.selectbox(
         "Strategy",
-        ["V/OI Breakout", "IV Rank Reversal", "Delta-Weighted Momentum", "Multi-Factor"],
+        [
+            "V/OI Breakout",
+            "IV Rank Reversal",
+            "Delta-Weighted Momentum",
+            "Multi-Factor",
+        ],
     )
     start_date = st.date_input("Start Date", date.today() - timedelta(days=365))
     end_date = st.date_input("End Date", date.today())
@@ -27,7 +33,11 @@ if run_backtest:
     with st.spinner("Running historical simulation..."):
         # Mock backtest results
         days = (end_date - start_date).days
-        dates = [start_date + timedelta(days=i) for i in range(days) if (start_date + timedelta(days=i)).weekday() < 5]
+        dates = [
+            start_date + timedelta(days=i)
+            for i in range(days)
+            if (start_date + timedelta(days=i)).weekday() < 5
+        ]
 
         # Generate equity curve with some realistic drawdowns
         np.random.seed(42)
@@ -46,7 +56,11 @@ if run_backtest:
     # Metrics
     total_return = (equity[-1] - initial_capital) / initial_capital * 100
     max_dd = min(drawdowns)
-    sharpe = (np.mean(returns) / np.std(returns)) * np.sqrt(252) if np.std(returns) > 0 else 0
+    sharpe = (
+        (np.mean(returns) / np.std(returns)) * np.sqrt(252)
+        if np.std(returns) > 0
+        else 0
+    )
     win_rate = np.sum(np.array(returns) > 0) / len(returns) * 100
 
     c1, c2, c3, c4, c5 = st.columns(5)

@@ -1,4 +1,5 @@
 """Live Trading page — position tracking and P&L."""
+
 import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
@@ -51,7 +52,10 @@ c1, c2, c3, c4 = st.columns(4)
 c1.metric("Open Positions", len(positions))
 c2.metric("Total Invested", f"${total_invested:,.0f}")
 c3.metric("Unrealized P&L", f"${total_pnl:,.0f}", f"{pnl_pct:.1f}%")
-c4.metric("Winning / Losing", f"{sum(1 for p in positions if p['current'] > p['entry'])} / {sum(1 for p in positions if p['current'] <= p['entry'])}")
+c4.metric(
+    "Winning / Losing",
+    f"{sum(1 for p in positions if p['current'] > p['entry'])} / {sum(1 for p in positions if p['current'] <= p['entry'])}",
+)
 
 st.divider()
 st.subheader("📋 Positions")
@@ -69,10 +73,10 @@ for p in positions:
                 f"""
                 <div style="background:#1a1d24;padding:0.8rem;border-radius:8px;">
                     <div style="font-size:1.2rem;font-weight:700;">
-                        {p['symbol']} {p['type']} ${p['strike']:.1f}
+                        {p["symbol"]} {p["type"]} ${p["strike"]:.1f}
                     </div>
                     <div style="color:#888;font-size:0.85rem;">
-                        Exp: {p['exp']} | Held: {p['days_held']}d
+                        Exp: {p["exp"]} | Held: {p["days_held"]}d
                     </div>
                 </div>
                 """,
@@ -134,4 +138,6 @@ fig.update_layout(
 )
 st.plotly_chart(fig, use_container_width=True)
 
-st.info("Live trading data requires broker API integration (e.g., Alpaca, Interactive Brokers). Mock data shown for demonstration.")
+st.info(
+    "Live trading data requires broker API integration (e.g., Alpaca, Interactive Brokers). Mock data shown for demonstration."
+)

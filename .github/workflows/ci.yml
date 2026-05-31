@@ -61,7 +61,8 @@ jobs:
         run: cd frontend && npx tsc --noEmit
 
       - name: Lint
-        run: cd frontend && npx next lint
+        working-directory: frontend
+        run: ./node_modules/.bin/eslint app/ components/ --max-warnings 0
 
       - name: Build
         run: cd frontend && npm run build

@@ -1,4 +1,5 @@
 """Options Screener page."""
+
 from datetime import date
 
 import streamlit as st
@@ -93,7 +94,9 @@ if run_scan:
         df_display["expiration"] = df_display["expiration"].dt.strftime("%Y-%m-%d")
         df_display["voi_ratio"] = df_display["voi_ratio"].round(1)
         df_display["delta"] = df_display["delta"].round(3)
-        df_display["implied_volatility"] = (df_display["implied_volatility"] * 100).round(1).astype(str) + "%"
+        df_display["implied_volatility"] = (
+            df_display["implied_volatility"] * 100
+        ).round(1).astype(str) + "%"
         df_display["anomaly_score"] = df_display["anomaly_score"].round(3)
 
         st.subheader("📋 Anomaly Results")
