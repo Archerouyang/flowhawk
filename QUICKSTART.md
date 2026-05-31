@@ -10,13 +10,18 @@ Options anomaly signal screener with LEAPS selector.
 
 | Tool | Version | Check |
 |------|---------|-------|
-| Python | ≥ 3.11.9 | `python --version` |
-| Node.js | ≥ 20 | `node --version` |
+| Python | 3.11.9+ | `python --version` |
+| Node.js | 22+ | `node --version` |
 | uv | latest | `uv --version` |
 
-Install `uv` (Python package manager):
+Install `uv`:
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Install Python 3.11 (if you don't have it):
+```bash
+uv python install 3.11
 ```
 
 ---
@@ -50,7 +55,7 @@ cd ..
 ./scripts/start-dev.sh
 ```
 
-This starts both services and waits for the backend health check:
+Starts both services and waits for backend health check:
 - **Backend**  → http://127.0.0.1:8000
 - **Frontend** → http://localhost:3000
 
@@ -79,8 +84,8 @@ curl http://127.0.0.1:8000/health
 # → {"status":"ok","service":"flowhawk-api"}
 ```
 
-### API docs (auto-generated)
-Open http://127.0.0.1:8000/docs in your browser.
+### API docs
+Open http://127.0.0.1:8000/docs — interactive Swagger UI.
 
 ### Frontend
 Open http://localhost:3000 — you should see the FlowHawk dashboard.
@@ -89,16 +94,23 @@ Open http://localhost:3000 — you should see the FlowHawk dashboard.
 
 ## 4. Data Mode
 
-By default the frontend uses **local mock data** (no backend required for UI development).
+The frontend supports two data modes, controlled by `NEXT_PUBLIC_USE_MOCK`:
 
-To call the real backend API, set the environment variable:
+| Mode | How | Backend required? |
+|------|-----|-------------------|
+| **Mock** (default) | `NEXT_PUBLIC_USE_MOCK=true` or unset | ❌ No |
+| **API** | `NEXT_PUBLIC_USE_MOCK=false` | ✅ Yes |
+
+Mock mode uses local data in `frontend/lib/api.ts` — no backend needed for UI work.
+
+To use the real backend API:
 ```bash
-# Terminal where you run npm run dev
+cd frontend
 export NEXT_PUBLIC_USE_MOCK=false
 npm run dev
 ```
 
-The frontend proxies `/api/*` requests to the FastAPI backend via Next.js rewrites (see `frontend/next.config.ts`).
+The frontend proxies `/api/*` to the FastAPI backend via Next.js rewrites.
 
 ---
 
