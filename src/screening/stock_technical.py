@@ -1,5 +1,5 @@
 """Stage 2: Stock technical filter with news sentiment."""
-from datetime import date
+from typing import Optional
 
 import polars as pl
 import numpy as np

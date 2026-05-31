@@ -1,8 +1,6 @@
 """Theta Data API adapter for options data."""
 import hashlib
-import json
-import os
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 
