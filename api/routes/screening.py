@@ -1,8 +1,6 @@
 """Options screening API routes."""
 from datetime import date
-from typing import Annotated
-
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 from src.data_sources.mock import generate_options_snapshot

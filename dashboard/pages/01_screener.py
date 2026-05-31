@@ -2,10 +2,7 @@
 from datetime import date
 
 import streamlit as st
-import polars as pl
 import plotly.express as px
-
-from src.config import get_config
 from src.data_sources.mock import generate_options_snapshot
 from src.screening.options_anomaly import OptionsAnomalyScreener
 

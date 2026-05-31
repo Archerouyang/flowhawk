@@ -2,12 +2,10 @@
 from datetime import date
 
 import streamlit as st
-import polars as pl
 import plotly.graph_objects as go
 
 from src.data_sources.mock import generate_options_snapshot
 from src.screening.options_anomaly import OptionsAnomalyScreener
-from src.screening.stock_technical import StockTechnicalFilter
 from src.screening.leaps_selector import LEAPSSelector
 
 st.set_page_config(page_title="Signals | FlowHawk", layout="wide")

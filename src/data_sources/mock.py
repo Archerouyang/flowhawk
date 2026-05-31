@@ -3,7 +3,6 @@ import random
 from datetime import date, timedelta
 
 import polars as pl
-import numpy as np
 
 
 def generate_options_snapshot(
