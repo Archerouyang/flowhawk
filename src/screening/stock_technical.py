@@ -1,4 +1,5 @@
 """Stage 2: Stock technical filter with news sentiment."""
+
 from typing import Optional
 
 import polars as pl
@@ -53,11 +54,13 @@ class StockTechnicalScreener:
                 news_score = (news_scores[sym] + 1) / 2  # normalize to 0-1
                 score = score * 0.7 + news_score * 0.3
 
-            results.append({
-                "symbol": sym,
-                "technical_score": score,
-                **metrics,
-            })
+            results.append(
+                {
+                    "symbol": sym,
+                    "technical_score": score,
+                    **metrics,
+                }
+            )
 
         if not results:
             return pl.DataFrame()
@@ -113,7 +116,9 @@ class StockTechnicalScreener:
             "sma200": round(sma200, 2),
             "rsi_14": round(rsi, 2),
             "atr_ratio": round(atr_ratio, 4),
-            "volume_vs_avg": round(last_volume / avg_volume_20, 2) if avg_volume_20 > 0 else 0,
+            "volume_vs_avg": round(last_volume / avg_volume_20, 2)
+            if avg_volume_20 > 0
+            else 0,
         }
 
         return score, metrics

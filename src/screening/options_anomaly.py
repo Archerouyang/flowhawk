@@ -39,13 +39,22 @@ class OptionsAnomalyScreener:
             return df
 
         # Compute derived fields
-        df = df.with_columns([
-            ((pl.col("bid") + pl.col("ask")) / 2).alias("mid"),
-            (pl.col("last_price") * pl.col("volume") * 100).alias("premium"),
-            (pl.col("volume").cast(pl.Float64) / pl.col("open_interest").cast(pl.Float64).replace(0, 1e-9)).alias("voi_ratio"),
-            (pl.col("expiration") - pl.col("snapshot_date")).dt.total_days().alias("dte"),
-            ((pl.col("ask") - pl.col("bid")) / pl.col("ask").replace(0, 1e-9)).alias("spread_ratio"),
-        ])
+        df = df.with_columns(
+            [
+                ((pl.col("bid") + pl.col("ask")) / 2).alias("mid"),
+                (pl.col("last_price") * pl.col("volume") * 100).alias("premium"),
+                (
+                    pl.col("volume").cast(pl.Float64)
+                    / pl.col("open_interest").cast(pl.Float64).replace(0, 1e-9)
+                ).alias("voi_ratio"),
+                (pl.col("expiration") - pl.col("snapshot_date"))
+                .dt.total_days()
+                .alias("dte"),
+                (
+                    (pl.col("ask") - pl.col("bid")) / pl.col("ask").replace(0, 1e-9)
+                ).alias("spread_ratio"),
+            ]
+        )
 
         # Hard filters
         filtered = df.filter(
@@ -75,7 +84,9 @@ class OptionsAnomalyScreener:
 
         # Delta quality: prefer 0.65-0.80
         filtered = filtered.with_columns(
-            (1.0 - ((pl.col("delta").abs() - 0.725).abs() / 0.725)).clip(0, 1).alias("delta_norm")
+            (1.0 - ((pl.col("delta").abs() - 0.725).abs() / 0.725))
+            .clip(0, 1)
+            .alias("delta_norm")
         )
 
         # Composite score
@@ -97,7 +108,9 @@ class OptionsAnomalyScreener:
 
     @staticmethod
     def _add_normalized(df: pl.DataFrame, col: str, new_col: str) -> pl.DataFrame:
-        return df.with_columns(OptionsAnomalyScreener._normalize_col(df, col).alias(new_col))
+        return df.with_columns(
+            OptionsAnomalyScreener._normalize_col(df, col).alias(new_col)
+        )
 
     @staticmethod
     def _normalize_col(df: pl.DataFrame, col: str) -> pl.Expr:

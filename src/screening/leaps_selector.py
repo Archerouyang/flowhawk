@@ -1,4 +1,5 @@
 """Stage 3: LEAPS selection engine."""
+
 from datetime import date
 
 import polars as pl
@@ -61,10 +62,23 @@ class LEAPSSelector:
             return []
 
         # Compute LEAPS quality score
-        df = df.with_columns([
-            (1.0 - ((pl.col("delta").abs() - 0.725).abs() / 0.725)).clip(0, 1).alias("delta_quality"),
-            (1.0 - (pl.col("theta").abs() / (pl.col("last_price").replace(0, 1e-9)) / self.max_theta_ratio)).clip(0, 1).alias("theta_quality"),
-        ])
+        df = df.with_columns(
+            [
+                (1.0 - ((pl.col("delta").abs() - 0.725).abs() / 0.725))
+                .clip(0, 1)
+                .alias("delta_quality"),
+                (
+                    1.0
+                    - (
+                        pl.col("theta").abs()
+                        / (pl.col("last_price").replace(0, 1e-9))
+                        / self.max_theta_ratio
+                    )
+                )
+                .clip(0, 1)
+                .alias("theta_quality"),
+            ]
+        )
 
         # Composite score
         df = df.with_columns(
@@ -88,8 +102,16 @@ class LEAPSSelector:
             )
 
             # Risk management
-            stop_loss = row["close"] * 0.92 if "close" in row else row["underlying_price"] * 0.92
-            target_price = row["close"] * 1.15 if "close" in row else row["underlying_price"] * 1.15
+            stop_loss = (
+                row["close"] * 0.92
+                if "close" in row
+                else row["underlying_price"] * 0.92
+            )
+            target_price = (
+                row["close"] * 1.15
+                if "close" in row
+                else row["underlying_price"] * 1.15
+            )
 
             signal = TradeSignal(
                 date=row.get("snapshot_date", date.today()),

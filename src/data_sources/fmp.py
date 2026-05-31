@@ -1,4 +1,5 @@
 """Financial Modeling Prep API adapter for stock data and news."""
+
 import hashlib
 import json
 import os
@@ -16,7 +17,9 @@ load_dotenv()
 class FMPDataSource:
     """Fetch stock price data and news from FMP."""
 
-    def __init__(self, api_key: Optional[str] = None, cache_dir: str = "./data/cache/fmp"):
+    def __init__(
+        self, api_key: Optional[str] = None, cache_dir: str = "./data/cache/fmp"
+    ):
         self.api_key = api_key or os.getenv("FMP_API_KEY", "")
         if not self.api_key:
             raise ValueError("FMP_API_KEY env var or api_key required")
@@ -70,18 +73,22 @@ class FMPDataSource:
             return pl.DataFrame()
 
         df = pl.DataFrame(data["historical"])
-        df = df.rename({
-            "date": "date",
-            "open": "open",
-            "high": "high",
-            "low": "low",
-            "close": "close",
-            "volume": "volume",
-        })
-        df = df.with_columns([
-            pl.col("date").str.to_date().alias("date"),
-            pl.lit(symbol).alias("symbol"),
-        ])
+        df = df.rename(
+            {
+                "date": "date",
+                "open": "open",
+                "high": "high",
+                "low": "low",
+                "close": "close",
+                "volume": "volume",
+            }
+        )
+        df = df.with_columns(
+            [
+                pl.col("date").str.to_date().alias("date"),
+                pl.lit(symbol).alias("symbol"),
+            ]
+        )
         for col in ["open", "high", "low", "close"]:
             df = df.with_columns(pl.col(col).cast(pl.Float64).alias(col))
         df = df.with_columns(pl.col("volume").cast(pl.Int64).alias("volume"))

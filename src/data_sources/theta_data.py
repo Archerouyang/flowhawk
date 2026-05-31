@@ -1,4 +1,5 @@
 """Theta Data API adapter for options data."""
+
 import hashlib
 from datetime import date, timedelta
 from pathlib import Path
@@ -15,8 +16,14 @@ class ThetaDataSource:
 
     def __init__(self):
         cfg = get_config()
-        self.base_url = cfg.data_sources.get("theta_data", {}).get("base_url", "https://api.thetadata.net")
-        self.cache_dir = Path(cfg.data_sources.get("theta_data", {}).get("cache_dir", "./data/cache/theta"))
+        self.base_url = cfg.data_sources.get("theta_data", {}).get(
+            "base_url", "https://api.thetadata.net"
+        )
+        self.cache_dir = Path(
+            cfg.data_sources.get("theta_data", {}).get(
+                "cache_dir", "./data/cache/theta"
+            )
+        )
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         self.user = cfg.theta_user
@@ -37,7 +44,10 @@ class ThetaDataSource:
         return self._token
 
     def _headers(self) -> dict:
-        return {"Authorization": f"Bearer {self._auth()}", "Content-Type": "application/json"}
+        return {
+            "Authorization": f"Bearer {self._auth()}",
+            "Content-Type": "application/json",
+        }
 
     def _cache_path(self, key: str) -> Path:
         h = hashlib.sha256(key.encode()).hexdigest()[:16]
@@ -65,7 +75,9 @@ class ThetaDataSource:
         if snapshot_date is None:
             snapshot_date = self._last_trading_day()
 
-        cache_key = f"snapshot_{snapshot_date}_{','.join(symbols) if symbols else 'all'}"
+        cache_key = (
+            f"snapshot_{snapshot_date}_{','.join(symbols) if symbols else 'all'}"
+        )
         cache_path = self._cache_path(cache_key)
 
         if use_cache and cache_path.exists():
@@ -119,7 +131,18 @@ class ThetaDataSource:
                 df = df.with_columns(pl.col(col).str.to_date().alias(col))
 
         # Cast numeric
-        for col in ["strike", "bid", "ask", "last_price", "delta", "gamma", "theta", "vega", "implied_volatility", "underlying_price"]:
+        for col in [
+            "strike",
+            "bid",
+            "ask",
+            "last_price",
+            "delta",
+            "gamma",
+            "theta",
+            "vega",
+            "implied_volatility",
+            "underlying_price",
+        ]:
             if col in df.columns:
                 df = df.with_columns(pl.col(col).cast(pl.Float64).alias(col))
 
@@ -144,7 +167,11 @@ class ThetaDataSource:
         resp = requests.get(
             f"{self.base_url}/v1/options/historical/iv",
             headers=self._headers(),
-            params={"symbol": symbol, "start": start.isoformat(), "end": end.isoformat()},
+            params={
+                "symbol": symbol,
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+            },
             timeout=60,
         )
         resp.raise_for_status()

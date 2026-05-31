@@ -1,4 +1,5 @@
 """Yahoo Finance adapter for stock price data."""
+
 from pathlib import Path
 from typing import Optional
 
@@ -13,7 +14,9 @@ class YFinanceDataSource:
 
     def __init__(self):
         cfg = get_config()
-        self.cache_dir = Path(cfg.data_sources.get("yfinance", {}).get("cache_dir", "./data/cache/yahoo"))
+        self.cache_dir = Path(
+            cfg.data_sources.get("yfinance", {}).get("cache_dir", "./data/cache/yahoo")
+        )
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.period = cfg.data_sources.get("yfinance", {}).get("period", "6mo")
         self.interval = cfg.data_sources.get("yfinance", {}).get("interval", "1d")
@@ -76,10 +79,12 @@ class YFinanceDataSource:
         df = pl.from_pandas(df_pd)
 
         # Cast types
-        df = df.with_columns([
-            pl.col("date").cast(pl.Date).alias("date"),
-            pl.col("volume").cast(pl.Int64).alias("volume"),
-        ])
+        df = df.with_columns(
+            [
+                pl.col("date").cast(pl.Date).alias("date"),
+                pl.col("volume").cast(pl.Int64).alias("volume"),
+            ]
+        )
         for col in ["open", "high", "low", "close"]:
             if col in df.columns:
                 df = df.with_columns(pl.col(col).cast(pl.Float64).alias(col))
