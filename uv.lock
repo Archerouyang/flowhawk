@@ -417,7 +417,7 @@ wheels = [
 [[package]]
 name = "flowhawk"
 version = "0.2.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "duckdb" },

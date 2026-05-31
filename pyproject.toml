@@ -34,3 +34,6 @@ dev = [
 [project.scripts]
 scan = "scripts.daily_scan:main"
 dashboard = "dashboard.app:main"
+
+[tool.uv]
+package = true
