@@ -1,5 +1,5 @@
 [project]
-name = "quant-research"
+name = "flowhawk"
 version = "0.2.0"
 description = "Options anomaly signal screener with LEAPS selector and visual dashboard"
 readme = "README.md"
