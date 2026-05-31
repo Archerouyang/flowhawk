@@ -41,7 +41,6 @@ class OptionContract:
 
     @property
     def dte(self) -> int:
-        from datetime import datetime
         return max(0, (self.expiration - self.snapshot_date).days)
 
     @property

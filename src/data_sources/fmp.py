@@ -95,7 +95,7 @@ class FMPDataSource:
     ) -> list[dict]:
         """Fetch recent news articles for a symbol."""
         data = self._get(
-            f"stock_news",
+            "stock_news",
             {"tickers": symbol, "limit": limit},
         )
         return data if isinstance(data, list) else []

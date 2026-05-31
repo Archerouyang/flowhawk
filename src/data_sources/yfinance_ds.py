@@ -1,6 +1,6 @@
 """Yahoo Finance adapter for stock price data."""
-from datetime import date, timedelta
 from pathlib import Path
+from typing import Optional
 
 import polars as pl
 import yfinance as yf

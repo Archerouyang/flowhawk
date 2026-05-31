@@ -2,7 +2,6 @@
 from datetime import date
 
 import polars as pl
-import numpy as np
 
 from src.config import get_config
 from src.models import TradeSignal, SignalDirection
