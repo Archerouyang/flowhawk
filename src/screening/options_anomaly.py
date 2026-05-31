@@ -116,6 +116,6 @@ class OptionsAnomalyScreener:
     def _normalize_col(df: pl.DataFrame, col: str) -> pl.Expr:
         min_val = df[col].min()
         max_val = df[col].max()
-        if max_val == min_val:
+        if max_val is None or min_val is None or max_val == min_val:
             return pl.lit(0.5)
-        return ((pl.col(col) - min_val) / (max_val - min_val)).clip(0, 1)
+        return ((pl.col(col) - min_val) / (max_val - min_val)).clip(0, 1)  # type: ignore[operator]

@@ -1,7 +1,7 @@
 """Trade signal data model."""
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date as Date
 from enum import Enum
 
 
@@ -14,11 +14,11 @@ class SignalDirection(Enum):
 class TradeSignal:
     """Final trade recommendation."""
 
-    date: date
+    date: Date
     symbol: str
     direction: SignalDirection
     strike: float
-    expiration: date
+    expiration: Date
     entry_price: float
     delta: float
     theta: float

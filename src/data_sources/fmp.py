@@ -69,7 +69,7 @@ class FMPDataSource:
             {"from": start.isoformat(), "to": end.isoformat()},
         )
 
-        if not data or "historical" not in data:
+        if not isinstance(data, dict) or "historical" not in data:
             return pl.DataFrame()
 
         df = pl.DataFrame(data["historical"])
