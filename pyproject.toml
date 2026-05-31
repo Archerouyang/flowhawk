@@ -19,6 +19,9 @@ dependencies = [
     "requests>=2.32.3",
     "schedule>=1.2.2",
     "click>=8.1.7",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.32.0",
+    "pydantic>=2.9.0",
 ]
 
 [project.optional-dependencies]
@@ -31,3 +34,11 @@ dev = [
 [project.scripts]
 scan = "scripts.daily_scan:main"
 dashboard = "dashboard.app:main"
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+]
