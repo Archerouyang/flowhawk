@@ -445,6 +445,11 @@ dev = [
     { name = "ruff" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1.7" },
@@ -469,6 +474,9 @@ requires-dist = [
     { name = "yfinance", specifier = ">=0.2.50" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "mypy", specifier = ">=2.1.0" }]
 
 [[package]]
 name = "frozendict"
