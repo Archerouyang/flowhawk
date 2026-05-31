@@ -1,113 +1,113 @@
 # Options Anomaly Screener
 
-基于期权异常信号的 LEAPS 交易筛选系统。
+A LEAPS trading screening system based on options anomaly signals.
 
-## 系统架构
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     每日盘后 Pipeline                         │
+│                  End-of-Day Pipeline                        │
 ├─────────────────────────────────────────────────────────────┤
-│  Theta Data EOD  ──▶  期权异常检测  ──▶  正股技术面过滤       │
-│  (全市场快照)         (V/OI/IV/Premium)   (MA/RSI/ATR)      │
-│                                              +              │
-│                                         新闻情绪分析        │
-│                                              │              │
-│                                              ▼              │
-│                                   LEAPS 精选引擎            │
-│                                   (Delta/Theta/IV筛选)      │
-│                                              │              │
-│                                              ▼              │
-│                                   1-2个交易建议             │
-│                                   + Streamlit 可视化面板    │
+│  Theta Data EOD  ──▶  Options Anomaly  ──▶  Stock Filter   │
+│  (Full Market)        (V/OI/IV/Premium)    (MA/RSI/ATR)    │
+│                                                +            │
+│                                           News Sentiment    │
+│                                                │            │
+│                                                ▼            │
+│                                    LEAPS Selector           │
+│                                    (Delta/Theta/IV Filter)  │
+│                                                │            │
+│                                                ▼            │
+│                                    1-2 Trade Recommendations│
+│                                    + Streamlit Dashboard    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 数据源
+## Data Sources
 
-| 数据源 | 用途 | 成本 |
-|--------|------|------|
-| **Theta Data** | 期权 EOD 快照 + Greeks | ~$25/月 |
-| **FMP** | 股票 K 线 + 新闻 | 免费档 / $19/月起 |
+| Source | Purpose | Cost |
+|--------|---------|------|
+| **Theta Data** | Options EOD Snapshot + Greeks | ~$25/mo |
+| **FMP** | Stock K-lines + News | Free tier / $19+/mo |
 
-## 核心模块
+## Core Modules
 
 ```
 src/
-├── data_sources/          # 数据源适配器
-│   ├── theta_data.py      # Theta Data SDK 封装
-│   └── fmp.py             # FMP API (股票 + 新闻)
-├── screening/             # 三层筛选引擎
-│   ├── options_anomaly.py # Stage 1: 期权异常检测
-│   ├── stock_technical.py # Stage 2: 技术面 + 新闻过滤
-│   └── leaps_selector.py  # Stage 3: LEAPS 精选
-├── models/                # 数据模型
+├── data_sources/          # Data source adapters
+│   ├── theta_data.py      # Theta Data SDK wrapper
+│   └── fmp.py             # FMP API (stocks + news)
+├── screening/             # Three-stage screening engine
+│   ├── options_anomaly.py # Stage 1: Options anomaly detection
+│   ├── stock_technical.py # Stage 2: Technical + news filter
+│   └── leaps_selector.py  # Stage 3: LEAPS selection
+├── models/                # Data models
 │   ├── option_contract.py
 │   ├── stock_bar.py
 │   └── trade_signal.py
-└── storage/               # Parquet 本地存储
+└── storage/               # Parquet local storage
     └── parquet_store.py
 
-dashboard/                  # Streamlit 可视化
-├── app.py                  # 主入口
+dashboard/                  # Streamlit visualization
+├── app.py                  # Main entry
 └── pages/
-    ├── 01_screener.py      # 筛选器
-    ├── 02_signals.py       # 信号详情
-    ├── 03_backtest.py      # 回测
-    ├── 04_strategies.py    # 策略选择
-    ├── 05_features.py      # 特征挖掘
-    ├── 06_factors.py       # 因子研究
-    └── 07_live.py          # 实盘交易
+    ├── 01_screener.py      # Screener
+    ├── 02_signals.py       # Signal details
+    ├── 03_backtest.py      # Backtest
+    ├── 04_strategies.py    # Strategy selection
+    ├── 05_features.py      # Feature mining
+    ├── 06_factors.py       # Factor research
+    └── 07_live.py          # Live trading
 
 scripts/
-└── daily_scan.py           # 每日盘后 CLI
+└── daily_scan.py           # End-of-day CLI
 ```
 
-## 快速开始
+## Quick Start
 
 ```bash
-# 1. 安装依赖
+# 1. Install dependencies
 cd quantResearch
 uv sync
 
-# 2. 配置 API Key
+# 2. Configure API keys
 cp .env.example .env
-# 编辑 .env 填入 THETA_DATA_USER / THETA_DATA_PASS / FMP_API_KEY
+# Edit .env with THETA_DATA_USER / THETA_DATA_PASS / FMP_API_KEY
 
-# 3. 运行每日扫描
+# 3. Run daily scan
 uv run python scripts/daily_scan.py
 
-# 4. 启动可视化面板
+# 4. Launch dashboard
 uv run streamlit run dashboard/app.py
 ```
 
-## 信号定义
+## Signal Definitions
 
-### Stage 1: 期权异常
+### Stage 1: Options Anomaly
 
-| 信号 | 阈值 | 权重 |
-|------|------|------|
-| V/OI 比率 | ≥ 3.0x | 30% |
-| 成交量突增 | ≥ 5x 20日均值 | 20% |
-| 名义本金 | ≥ $100,000 | 15% |
+| Signal | Threshold | Weight |
+|--------|-----------|--------|
+| V/OI Ratio | ≥ 3.0x | 30% |
+| Volume Spike | ≥ 5x 20-day avg | 20% |
+| Notional Premium | ≥ $100,000 | 15% |
 | IV Rank | ≤ 50% | 15% |
-| DTE | 180-730 天 | 10% |
+| DTE | 180-730 days | 10% |
 | Delta | 0.50-0.85 | 10% |
 
-### Stage 2: 技术面过滤
+### Stage 2: Technical Filter
 
-- 价格 > 200日均线
-- 价格 > 20日均线
-- 成交量 > 20日均量 × 1.5
+- Price > 200-day SMA
+- Price > 20-day SMA
+- Volume > 20-day avg × 1.5
 - RSI 30-70
-- ATR/价格 < 5%
-- 新闻情绪加分
+- ATR/Price < 5%
+- News sentiment bonus
 
-### Stage 3: LEAPS 精选
+### Stage 3: LEAPS Selection
 
 - Delta: 0.65-0.80
-- DTE: > 180 天
-- Theta/价格 < 0.3%
+- DTE: > 180 days
+- Theta/Price < 0.3%
 - Bid-Ask Spread < 5%
 - IV Percentile < 50%
 
@@ -118,7 +118,9 @@ uv run streamlit run dashboard/app.py
 - **Test**: pytest
 - **Coverage**: codecov
 
-所有变更必须通过 PR 审查，CI 通过后方可合并。
+All changes must go through PR review and pass CI before merging.
+
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) and [Branch Strategy](docs/BRANCH_STRATEGY.md) for details.
 
 ## License
 

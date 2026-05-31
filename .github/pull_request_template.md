@@ -1,21 +1,21 @@
-## 变更摘要
-<!-- 用一句话描述这个 PR 做了什么 -->
+## Summary
+<!-- One sentence describing what this PR does -->
 
-## 变更类型
-<!-- 勾选适用的类型 -->
-- [ ] 新功能 (feature)
-- [ ] Bug 修复 (bugfix)
-- [ ] 文档更新 (docs)
-- [ ] 代码重构 (refactor)
-- [ ] 性能优化 (perf)
-- [ ] 测试补充 (test)
+## Change Type
+<!-- Check applicable types -->
+- [ ] Feature
+- [ ] Bugfix
+- [ ] Docs
+- [ ] Refactor
+- [ ] Performance
+- [ ] Tests
 
-##  checklist
-- [ ] 代码通过 `ruff check` 和 `ruff format`
-- [ ] 类型检查通过 `mypy`
-- [ ] 新增/修改的代码有对应的测试
-- [ ] 所有测试通过 `pytest`
-- [ ] 文档已同步更新
+## Checklist
+- [ ] Code passes `ruff check` and `ruff format`
+- [ ] Type check passes `mypy`
+- [ ] New/modified code has corresponding tests
+- [ ] All tests pass `pytest`
+- [ ] Documentation updated
 
-## 相关 Issue
+## Related Issues
 <!-- Fixes #123, Closes #456 -->

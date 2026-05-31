@@ -1,10 +1,10 @@
-# 所有文件都需要 @archer 审查
+# All files require @archer review
 * @archer
 
-# 数据源模块
+# Data source modules
 /src/data_sources/ @archer
 
-# 筛选引擎
+# Screening engines
 /src/screening/ @archer
 
 # Dashboard
