@@ -7,7 +7,8 @@ on:
     branches: [main, develop]
 
 jobs:
-  lint-and-test:
+  backend:
+    name: Backend (Python)
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -28,13 +29,40 @@ jobs:
         run: uv sync --all-extras
 
       - name: Lint with ruff
-        run: uv run ruff check src/ dashboard/ scripts/
+        run: uv run ruff check src/ api/ dashboard/ scripts/
 
       - name: Format check with ruff
-        run: uv run ruff format --check src/ dashboard/ scripts/
+        run: uv run ruff format --check src/ api/ dashboard/ scripts/
 
       - name: Type check with mypy
-        run: uv run mypy src/ --ignore-missing-imports
+        run: uv run mypy src/ api/ --ignore-missing-imports
 
       - name: Run tests with pytest
         run: uv run pytest tests/ -v
+
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: cd frontend && npm ci
+
+      - name: Type check
+        run: cd frontend && npx tsc --noEmit
+
+      - name: Lint
+        working-directory: frontend
+        run: ./node_modules/.bin/eslint app/ components/ --max-warnings 0
+
+      - name: Build
+        run: cd frontend && npm run build
