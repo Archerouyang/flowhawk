@@ -40,5 +40,6 @@ package = true
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "mypy>=2.1.0",
 ]

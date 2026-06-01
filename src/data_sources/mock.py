@@ -16,6 +16,7 @@ class SymbolMeta:
     sector: str
     is_etf: bool
     avg_volume_30d: float
+    category: str  # "big_cap" | "small_cap" | "etf"
 
 
 # Sector pool for realistic mock data
@@ -43,30 +44,90 @@ _ETF_SECTORS = {
     "IWM": "Broad Market",
 }
 
+# Known symbol → fixed category mapping ($50B threshold)
+_BIG_CAP_SYMBOLS = {
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "META",
+    "NVDA",
+    "TSLA",
+    "AMD",
+    "AVGO",
+    "AMZN",
+    "CRM",
+    "NFLX",
+    "IBM",
+    "INTC",
+    "QCOM",
+    "CSCO",
+}
+_SMALL_CAP_SYMBOLS = {
+    "SPCE",
+    "ONDS",
+    "PLTR",
+    "SOFI",
+    "MSTR",
+    "RIOT",
+    "MARA",
+    "TLRY",
+    "BYND",
+    "SPWR",
+    "FSLR",
+    "RUN",
+    "BE",
+    "MVIS",
+    "RAD",
+}
+_KNOWN_ETFS = set(_ETF_SECTORS.keys())
+
 
 def generate_symbol_meta(symbols: list[str]) -> dict[str, SymbolMeta]:
-    """Generate realistic metadata for each symbol."""
+    """Generate realistic metadata for each symbol with fixed categories."""
     rng = random.Random(7)  # separate seed for stability
     meta_map: dict[str, SymbolMeta] = {}
 
     for sym in symbols:
         sym_upper = sym.upper()
 
-        # Known ETFs
-        if sym_upper in _ETF_SECTORS or sym_upper.endswith("ETF"):
+        # Fixed category assignment for known symbols
+        if sym_upper in _KNOWN_ETFS or sym_upper.endswith("ETF"):
             sector = _ETF_SECTORS.get(sym_upper, "Broad Market")
-            market_cap = rng.uniform(10, 500)  # AUM proxy
+            market_cap = rng.uniform(10, 500)
             is_etf = True
+            category = "etf"
+        elif sym_upper in _BIG_CAP_SYMBOLS:
+            sector = rng.choice(
+                [
+                    "Technology",
+                    "Communication Services",
+                    "Consumer Discretionary",
+                    "Healthcare",
+                ]
+            )
+            market_cap = rng.uniform(50.0, 3000.0)
+            is_etf = False
+            category = "big_cap"
+        elif sym_upper in _SMALL_CAP_SYMBOLS:
+            sector = rng.choice(
+                ["Technology", "Healthcare", "Industrials", "Energy", "Materials"]
+            )
+            market_cap = rng.uniform(0.5, 50.0)
+            is_etf = False
+            category = "small_cap"
         else:
+            # Unknown symbol: size-weighted random assignment
             sector = rng.choice(_SECTORS)
-            # Size-weighted: most stocks small, few mega-cap
             roll = rng.random()
             if roll < 0.6:
-                market_cap = rng.uniform(0.5, 5.0)  # small-cap
+                market_cap = rng.uniform(0.5, 5.0)
+                category = "small_cap"
             elif roll < 0.9:
-                market_cap = rng.uniform(5.0, 50.0)  # mid-cap
+                market_cap = rng.uniform(5.0, 50.0)
+                category = "small_cap"
             else:
-                market_cap = rng.uniform(50.0, 3000.0)  # large-cap
+                market_cap = rng.uniform(50.0, 3000.0)
+                category = "big_cap"
             is_etf = False
 
         meta_map[sym_upper] = SymbolMeta(
@@ -75,6 +136,7 @@ def generate_symbol_meta(symbols: list[str]) -> dict[str, SymbolMeta]:
             sector=sector,
             is_etf=is_etf,
             avg_volume_30d=round(rng.gauss(5e6, 2e6), 0),
+            category=category,
         )
 
     return meta_map
