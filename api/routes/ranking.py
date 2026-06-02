@@ -58,6 +58,7 @@ class ContractEntry(BaseModel):
     oi: OIData
     iv: IVData
     greeks: GreeksData
+    leap_cp_ratio: float
     narrative: str
 
 
@@ -78,13 +79,21 @@ class DashboardStats(BaseModel):
     total_volume: int
     total_premium: float
     call_put_ratio: float
-    top_big_mover: ContractEntry | None
-    top_volume_spike: ContractEntry | None
+    dragon_tiger: list[ContractEntry]
+    individual: list[ContractEntry]
+    etf: list[ContractEntry]
+    premium: list[ContractEntry]
+
+
+class RankingRequest(BaseModel):
+    """Ranking request."""
+
+    category: str = "dragon_tiger"
 
 
 @router.post("/ranking", response_model=RankingResponse)
-async def get_ranking() -> RankingResponse:
-    """Get all contract rankings (dragon-tiger + individual + etf)."""
+async def get_ranking(request: RankingRequest) -> RankingResponse:
+    """Get contract rankings for a specific category."""
     snapshot_date = date.today()
 
     symbols = [
@@ -116,12 +125,11 @@ async def get_ranking() -> RankingResponse:
 
     rankings = generate_contract_rankings(snapshot, meta_map)
 
-    # Return dragon-tiger as default (all contracts top 25)
-    entries = rankings.get("dragon_tiger", [])
+    entries = rankings.get(request.category, rankings.get("dragon_tiger", []))
 
     return RankingResponse(
         date=snapshot_date.isoformat(),
-        category="dragon_tiger",
+        category=request.category if request.category in rankings else "dragon_tiger",
         total=len(entries),
         rankings=_convert_entries(entries),
     )
@@ -175,20 +183,16 @@ async def get_dashboard() -> DashboardStats:
     put_vol = sum(e.volume for e in all_entries if e.option_type == "P")
     cp_ratio = call_vol / put_vol if put_vol > 0 else 999.0
 
-    # Top big mover (highest change_pct)
-    top_mover = max(all_entries, key=lambda e: abs(e.change_pct), default=None)
-
-    # Top volume spike
-    top_spike = max(all_entries, key=lambda e: e.volume_vs_avg, default=None)
-
     return DashboardStats(
         date=snapshot_date.isoformat(),
         total_contracts=total_contracts,
         total_volume=total_volume,
         total_premium=round(total_premium, 2),
         call_put_ratio=round(cp_ratio, 2),
-        top_big_mover=_convert_entry(top_mover),
-        top_volume_spike=_convert_entry(top_spike),
+        dragon_tiger=_convert_entries(rankings.get("dragon_tiger", [])),
+        individual=_convert_entries(rankings.get("individual", [])),
+        etf=_convert_entries(rankings.get("etf", [])),
+        premium=_convert_entries(rankings.get("premium", [])),
     )
 
 
@@ -236,5 +240,6 @@ def _convert_entry(e) -> ContractEntry | None:
             theta=e.theta,
             vega=e.vega,
         ),
+        leap_cp_ratio=e.leap_cp_ratio,
         narrative=e.narrative,
     )

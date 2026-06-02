@@ -48,6 +48,8 @@ class ContractEntry:
     gamma: float
     theta: float
     vega: float
+    # LEAP C/P ratio (underlying-level)
+    leap_cp_ratio: float
     # Narrative
     narrative: str
 
@@ -56,7 +58,8 @@ class RankingGenerator:
     """Generate daily contract-level rankings."""
 
     DRAGON_TIGER_TOP_N = 25
-    CATEGORY_TOP_N = 15
+    CATEGORY_TOP_N = 25
+    LEAP_DTE_MIN = 90
 
     def __init__(
         self,
@@ -77,44 +80,88 @@ class RankingGenerator:
             }
         """
         if self.df.is_empty():
-            return {"dragon_tiger": [], "individual": [], "etf": []}
+            return {
+                "dragon_tiger": [],
+                "individual": [],
+                "etf": [],
+                "premium": [],
+            }
+
+        # Precompute per-symbol LEAP C/P ratio (DTE >= 90)
+        leap_cp_map = self._compute_leap_cp_ratio()
 
         # Build contract entries from snapshot
         all_entries: list[ContractEntry] = []
         for row in self.df.iter_rows(named=True):
-            entry = self._build_entry(row)
+            entry = self._build_entry(row, leap_cp_map)
             all_entries.append(entry)
-
-        # Sort by volume desc
-        all_entries.sort(key=lambda e: e.volume, reverse=True)
 
         import dataclasses
 
-        # Dragon-Tiger: Top 25 overall
-        dragon_tiger = all_entries[: self.DRAGON_TIGER_TOP_N]
+        # Dragon-Tiger: Top 25 by volume
+        all_entries.sort(key=lambda e: e.volume, reverse=True)
         dragon_tiger = [
-            dataclasses.replace(e, rank=i + 1) for i, e in enumerate(dragon_tiger)
+            dataclasses.replace(e, rank=i + 1)
+            for i, e in enumerate(all_entries[: self.DRAGON_TIGER_TOP_N])
         ]
 
-        # Individual stocks (not ETF)
-        individual = [e for e in all_entries if not e.is_etf][: self.CATEGORY_TOP_N]
+        # Individual stocks (not ETF) by volume
         individual = [
-            dataclasses.replace(e, rank=i + 1) for i, e in enumerate(individual)
+            dataclasses.replace(e, rank=i + 1)
+            for i, e in enumerate(
+                [e for e in all_entries if not e.is_etf][: self.CATEGORY_TOP_N]
+            )
         ]
 
-        # ETF
-        etf_entries = [e for e in all_entries if e.is_etf][: self.CATEGORY_TOP_N]
+        # ETF by volume
         etf_entries = [
-            dataclasses.replace(e, rank=i + 1) for i, e in enumerate(etf_entries)
+            dataclasses.replace(e, rank=i + 1)
+            for i, e in enumerate(
+                [e for e in all_entries if e.is_etf][: self.CATEGORY_TOP_N]
+            )
+        ]
+
+        # Premium ranking: Top 25 by premium (all contracts)
+        all_entries.sort(key=lambda e: e.premium, reverse=True)
+        premium_entries = [
+            dataclasses.replace(e, rank=i + 1)
+            for i, e in enumerate(all_entries[: self.CATEGORY_TOP_N])
         ]
 
         return {
             "dragon_tiger": dragon_tiger,
             "individual": individual,
             "etf": etf_entries,
+            "premium": premium_entries,
         }
 
-    def _build_entry(self, row: dict) -> ContractEntry:
+    def _compute_leap_cp_ratio(self) -> dict[str, float]:
+        """Compute LEAP C/P ratio per symbol (DTE >= 90)."""
+        if self.df.is_empty():
+            return {}
+
+        # Ensure dte column exists
+        df = self.df.with_columns(
+            (pl.col("expiration") - pl.col("snapshot_date"))
+            .dt.total_days()
+            .alias("dte")
+        )
+
+        leap_cp_map: dict[str, float] = {}
+        for sym in df["symbol"].unique().to_list():
+            sym_df = df.filter(pl.col("symbol") == sym)
+            leaps = sym_df.filter(pl.col("dte") >= self.LEAP_DTE_MIN)
+            if leaps.is_empty():
+                leap_cp_map[sym] = 0.0
+                continue
+
+            call_vol = float(leaps.filter(pl.col("option_type") == "C")["volume"].sum())
+            put_vol = float(leaps.filter(pl.col("option_type") == "P")["volume"].sum())
+            leap_cp_map[sym] = call_vol / put_vol if put_vol > 0 else 999.0
+
+        return leap_cp_map
+
+    def _build_entry(self, row: dict, leap_cp_map: dict[str, float]) -> ContractEntry:
         """Build a ContractEntry from a snapshot row."""
         sym = row["symbol"]
         meta = self.meta.get(sym)
@@ -138,6 +185,7 @@ class RankingGenerator:
         iv = float(row.get("implied_volatility", 0.3))
         volume = int(row["volume"])
         oi = int(row["open_interest"])
+        leap_cp_ratio = leap_cp_map.get(sym, 0.0)
 
         # Mock HLC: use last_price as close, generate high/low from IV
         rng = np.random.RandomState(hash(contract_code) % 2**31)
@@ -198,9 +246,14 @@ class RankingGenerator:
             gamma=round(gamma, 4),
             theta=round(theta, 4),
             vega=round(vega, 4),
+            leap_cp_ratio=round(leap_cp_ratio, 2),
             narrative=narrative,
         )
 
+    # TODO: Replace with actual anomaly narrative generation
+    # Current: simple rule-based mock. Need: historical context, sentiment,
+    #          premium ranking, Greeks profile, LEAP sentiment analysis.
+    # See docs/CONTEXT.md for planned dimensions.
     @staticmethod
     def _build_narrative(
         sym: str,

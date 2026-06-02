@@ -1,81 +1,29 @@
 # FlowHawk
 
-An options anomaly signal screener with LEAPS selector, built with Python backend + React/Next.js frontend.
+Options anomaly signal screener with LEAPS selector. Python backend + React/Next.js frontend.
 
 ## Architecture
 
-```
-FlowHawk
-├── Python Backend (src/ + api/)
-│   ├── src/
-│   │   ├── data_sources/     # Theta Data, FMP, YFinance, Mock
-│   │   ├── screening/        # 3-stage pipeline: anomaly → technical → LEAPS
-│   │   ├── models/           # TradeSignal, OptionContract, etc.
-│   │   └── storage/          # Parquet + DuckDB
-│   └── api/                  # FastAPI REST layer
-│       ├── routes/           # /screen, /signals, /backtest, /health
-│       └── main.py           # FastAPI app entry
-│
-├── React Frontend (frontend/)
-│   ├── app/                  # Next.js App Router pages
-│   │   ├── page.tsx          # Dashboard
-│   │   ├── screener/         # Options anomaly scanner
-│   │   ├── signals/          # LEAPS trade recommendations
-│   │   ├── backtest/         # Strategy validation
-│   │   ├── strategies/       # Strategy management
-│   │   ├── features/         # Feature mining
-│   │   ├── factors/          # IC analysis
-│   │   └── live/             # Live trading / positions
-│   └── components/           # shadcn/ui + custom
-│
-└── Streamlit Prototype (dashboard/)
-    └── pages/                # Legacy Streamlit pages (reference)
-```
+- `src/` — Python core (data sources, screening pipeline, models, storage)
+- `api/` — FastAPI REST layer (`/screen`, `/signals`, `/backtest`, `/health`)
+- `frontend/` — Next.js App Router dashboard
+- `dashboard/` — Legacy Streamlit (reference only)
 
-## Data Sources
+See `README.md` for full architecture and `QUICKSTART.md` for setup.
 
-| Source | Purpose | Status |
-|--------|---------|--------|
-| Theta Data | Options EOD Snapshot + Greeks | Subscription required (~$25/mo) |
-| FMP | Stock K-lines + News | API Key required |
-| Mock | Development without subscriptions | Active |
+## Key Constraints
 
-## Quick Start
+- Python 3.11.x, package manager `uv`
+- API keys via `.env`
+- All changes via PR, CI pass required before merge
+- Public GitHub repository
 
-### Backend
-```bash
-cd ~/projects/flowhawk
-uv sync --all-extras
-cp .env.example .env
-# Edit .env with your API keys
-uv run python -m uvicorn api.main:app --reload --port 8000
-```
+## Context Budget
 
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev          # http://localhost:3000
-npm run build        # Production build
-```
+- 对话 >15 轮 → 主动建议 `/compact`
+- 单次读取代码 >500 行后 → 建议 `/compact`
+- 跨 >5 个文件分析后 → 建议 `/compact`
 
-### Streamlit (Legacy)
-```bash
-uv run streamlit run dashboard/app.py
-```
+## Domain Context
 
-## Development
-
-- **Package manager**: `uv` (Astral) for Python, `npm` for frontend
-- **Python version**: 3.11.9+
-- **Node version**: 22+
-- **Add Python dep**: `uv add <package>`
-- **Add Node dep**: `cd frontend && npm install <package>`
-
-## CI / CD
-
-- All changes submitted via Pull Request
-- CI runs on Python 3.11/3.12 + Node 22
-- Backend: ruff lint/format, mypy, pytest
-- Frontend: tsc type check, next lint, next build
-- See [Branch Strategy](docs/BRANCH_STRATEGY.md)
+See `docs/CONTEXT.md` for glossary, data sources, strategy classification, and key constraints.

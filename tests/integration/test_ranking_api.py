@@ -53,11 +53,16 @@ class TestContractRankingAPI:
         assert "total_volume" in data
         assert "total_premium" in data
         assert "call_put_ratio" in data
-        assert "top_big_mover" in data
-        assert "top_volume_spike" in data
+        assert "dragon_tiger" in data
+        assert "individual" in data
+        assert "etf" in data
+        assert "premium" in data
 
-    def test_dashboard_top_mover_has_contract_code(self, client):
+    def test_dashboard_lists_have_contract_fields(self, client):
         response = client.get("/api/v1/dashboard")
         data = response.json()
-        if data["top_big_mover"]:
-            assert "contract_code" in data["top_big_mover"]
+        for key in ["dragon_tiger", "individual", "etf", "premium"]:
+            if data[key]:
+                entry = data[key][0]
+                assert "contract_code" in entry
+                assert "leap_cp_ratio" in entry

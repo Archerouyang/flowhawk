@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getSignals, type ClassifiedSignal } from "@/lib/api";
 
@@ -21,7 +23,18 @@ const SIGNAL_TYPE_ICONS: Record<string, string> = {
   sector_rotation: "🔄",
 };
 
-function SignalCard({ signal }: { signal: ClassifiedSignal }) {
+function toContractCode(s: ClassifiedSignal): string {
+  const exp = s.expiration.replace(/-/g, "").slice(2);
+  return `${s.symbol}${exp}${s.option_type}${s.strike}`;
+}
+
+function SignalCard({
+  signal,
+  onSelect,
+}: {
+  signal: ClassifiedSignal;
+  onSelect: (s: ClassifiedSignal) => void;
+}) {
   const greeks = [
     { label: "Delta", value: signal.delta },
     { label: "Gamma", value: signal.gamma },
@@ -30,7 +43,10 @@ function SignalCard({ signal }: { signal: ClassifiedSignal }) {
   ];
 
   return (
-    <Card className="border-border bg-card overflow-hidden">
+    <Card
+      className="border-border bg-card overflow-hidden cursor-pointer transition-colors hover:bg-muted/20"
+      onClick={() => onSelect(signal)}
+    >
       <CardContent className="p-0">
         <div className="p-5 space-y-4">
           {/* Header */}
@@ -108,22 +124,27 @@ function SignalCard({ signal }: { signal: ClassifiedSignal }) {
             </div>
           </div>
 
-          {/* Risk */}
-          <div className="grid grid-cols-3 gap-4 text-sm">
-            <div className="rounded-md border border-border bg-card p-2 text-center">
-              <div className="text-xs text-muted-foreground">Last Price</div>
-              <div className="font-semibold">${signal.last_price.toFixed(2)}</div>
-            </div>
-            <div className="rounded-md border border-border bg-card p-2 text-center">
-              <div className="text-xs text-muted-foreground">V/OI</div>
-              <div className="font-semibold">{signal.voi_ratio.toFixed(1)}x</div>
-            </div>
-            <div className="rounded-md border border-border bg-card p-2 text-center">
-              <div className="text-xs text-muted-foreground">Theta/Price</div>
-              <div className="font-semibold">
-                {(signal.theta_price_ratio * 100).toFixed(2)}%
+          {/* Risk + Action */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="grid grid-cols-3 gap-4 text-sm flex-1">
+              <div className="rounded-md border border-border bg-card p-2 text-center">
+                <div className="text-xs text-muted-foreground">Last Price</div>
+                <div className="font-semibold">${signal.last_price.toFixed(2)}</div>
+              </div>
+              <div className="rounded-md border border-border bg-card p-2 text-center">
+                <div className="text-xs text-muted-foreground">V/OI</div>
+                <div className="font-semibold">{signal.voi_ratio.toFixed(1)}x</div>
+              </div>
+              <div className="rounded-md border border-border bg-card p-2 text-center">
+                <div className="text-xs text-muted-foreground">Theta/Price</div>
+                <div className="font-semibold">
+                  {(signal.theta_price_ratio * 100).toFixed(2)}%
+                </div>
               </div>
             </div>
+            <Button variant="outline" size="sm" className="shrink-0">
+              查看详情 →
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -132,14 +153,19 @@ function SignalCard({ signal }: { signal: ClassifiedSignal }) {
 }
 
 export default function SignalsPage() {
+  const router = useRouter();
   const [signals, setSignals] = useState<ClassifiedSignal[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getSignals(["AAPL", "TSLA", "NVDA", "MSFT", "AMZN"])
+    getSignals()
       .then((res) => setSignals(res.signals))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleSelect = (sig: ClassifiedSignal) => {
+    router.push(`/dashboard/signals/${toContractCode(sig)}`);
+  };
 
   const byType: Record<string, ClassifiedSignal[]> = {};
   for (const s of signals) {
@@ -184,15 +210,15 @@ export default function SignalsPage() {
         </TabsList>
 
         <TabsContent value="all" className="space-y-4">
-          {signals.map((sig, i) => (
-            <SignalCard key={i} signal={sig} />
+          {signals.map((sig) => (
+            <SignalCard key={`${sig.symbol}-${sig.strike}-${sig.expiration}`} signal={sig} onSelect={handleSelect} />
           ))}
         </TabsContent>
 
         {Object.entries(byType).map(([type, list]) => (
           <TabsContent key={type} value={type} className="space-y-4">
-            {list.map((sig, i) => (
-              <SignalCard key={i} signal={sig} />
+            {list.map((sig) => (
+              <SignalCard key={`${sig.symbol}-${sig.strike}-${sig.expiration}`} signal={sig} onSelect={handleSelect} />
             ))}
           </TabsContent>
         ))}

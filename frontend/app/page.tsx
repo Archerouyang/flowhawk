@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,12 +15,6 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Flame,
   TrendingUp,
   Activity,
@@ -27,20 +22,23 @@ import {
   RefreshCw,
   ArrowUpRight,
   ArrowDownRight,
+  DollarSign,
+  Target,
 } from "lucide-react";
 import {
-  getContractRanking,
   getContractStats,
+  getSignals,
   type ContractEntry,
   type ContractDashboardStats,
+  type ClassifiedSignal,
 } from "@/lib/api";
 
 type CategoryKey = "dragon_tiger" | "individual" | "etf";
 
 const CATEGORY_LABELS: Record<CategoryKey, string> = {
-  dragon_tiger: "期权龙虎榜",
-  individual: "个股期权",
-  etf: "ETF 期权",
+  dragon_tiger: "总榜",
+  individual: "个股",
+  etf: "ETF",
 };
 
 function ChangeBadge({ pct }: { pct: number }) {
@@ -81,9 +79,7 @@ function ContractBadge({ type }: { type: string }) {
 function VolumeBadge({ vsAvg }: { vsAvg: number }) {
   if (vsAvg >= 10)
     return (
-      <span className="text-xs font-bold text-red-400">
-        🔥 {vsAvg.toFixed(1)}x
-      </span>
+      <span className="text-xs font-bold text-red-400">🔥 {vsAvg.toFixed(1)}x</span>
     );
   if (vsAvg >= 5)
     return (
@@ -93,123 +89,9 @@ function VolumeBadge({ vsAvg }: { vsAvg: number }) {
     );
   if (vsAvg >= 2)
     return (
-      <span className="text-xs text-yellow-400">
-        📈 {vsAvg.toFixed(1)}x
-      </span>
+      <span className="text-xs text-yellow-400">📈 {vsAvg.toFixed(1)}x</span>
     );
   return <span className="text-xs text-muted-foreground">{vsAvg.toFixed(1)}x</span>;
-}
-
-function ContractDetailDialog({
-  entry,
-  open,
-  onClose,
-}: {
-  entry: ContractEntry | null;
-  open: boolean;
-  onClose: () => void;
-}) {
-  if (!entry) return null;
-  const p = entry.price;
-  const v = entry.volume;
-  const o = entry.oi;
-  const iv = entry.iv;
-  const g = entry.greeks;
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg bg-card border-border text-card-foreground">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span className="font-mono text-lg">{entry.contract_code}</span>
-            <ContractBadge type={entry.option_type} />
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* Price */}
-          <div className="grid grid-cols-4 gap-2">
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">High</div>
-              <div className="font-mono font-bold">{p.high.toFixed(2)}</div>
-            </div>
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">Low</div>
-              <div className="font-mono font-bold">{p.low.toFixed(2)}</div>
-            </div>
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">Last</div>
-              <div className="font-mono font-bold">{p.last.toFixed(2)}</div>
-            </div>
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">Change</div>
-              <div className="font-mono font-bold">
-                <ChangeBadge pct={p.change_pct} />
-              </div>
-            </div>
-          </div>
-
-          {/* Volume & OI */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">Volume</div>
-              <div className="font-mono font-bold">{v.total.toLocaleString()}</div>
-              <VolumeBadge vsAvg={v.vs_avg} />
-            </div>
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">Premium</div>
-              <div className="font-mono font-bold">${v.premium.toFixed(2)}M</div>
-            </div>
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">OI Change</div>
-              <div className="font-mono font-bold">
-                {o.change > 0 ? "+" : ""}
-                {o.change.toLocaleString()}
-              </div>
-            </div>
-          </div>
-
-          {/* IV */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">IV</div>
-              <div className="font-mono font-bold">{(iv.current * 100).toFixed(1)}%</div>
-            </div>
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">IV Change</div>
-              <div className="font-mono font-bold">
-                <ChangeBadge pct={iv.change_pct} />
-              </div>
-            </div>
-          </div>
-
-          {/* Greeks */}
-          <div className="grid grid-cols-4 gap-2">
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">Delta</div>
-              <div className="font-mono font-bold">{g.delta.toFixed(3)}</div>
-            </div>
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">Gamma</div>
-              <div className="font-mono font-bold">{g.gamma.toFixed(4)}</div>
-            </div>
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">Theta</div>
-              <div className="font-mono font-bold">{g.theta.toFixed(4)}</div>
-            </div>
-            <div className="rounded bg-muted p-2 text-center">
-              <div className="text-xs text-muted-foreground">Vega</div>
-              <div className="font-mono font-bold">{g.vega.toFixed(4)}</div>
-            </div>
-          </div>
-
-          {/* Narrative */}
-          <div className="rounded border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
-            {entry.narrative}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 function RankingTable({
@@ -232,8 +114,7 @@ function RankingTable({
             <TableHead className="text-right">成交量</TableHead>
             <TableHead className="text-right">量能</TableHead>
             <TableHead className="text-right">成交额</TableHead>
-            <TableHead className="text-right">持仓</TableHead>
-            <TableHead className="text-right">IV</TableHead>
+            <TableHead className="text-right">LEAP C/P</TableHead>
             <TableHead className="text-right">Delta</TableHead>
             <TableHead>异动说明</TableHead>
           </TableRow>
@@ -272,11 +153,14 @@ function RankingTable({
               <TableCell className="text-right font-mono text-muted-foreground">
                 ${entry.volume.premium.toFixed(1)}M
               </TableCell>
-              <TableCell className="text-right font-mono text-muted-foreground">
-                {entry.oi.total.toLocaleString()}
-              </TableCell>
-              <TableCell className="text-right font-mono text-muted-foreground">
-                {(entry.iv.current * 100).toFixed(0)}%
+              <TableCell className="text-right font-mono">
+                {entry.leap_cp_ratio > 50 ? (
+                  <span className="text-red-400">{entry.leap_cp_ratio.toFixed(1)}</span>
+                ) : entry.leap_cp_ratio > 2 ? (
+                  <span className="text-orange-400">{entry.leap_cp_ratio.toFixed(1)}</span>
+                ) : (
+                  <span className="text-muted-foreground">{entry.leap_cp_ratio.toFixed(1)}</span>
+                )}
               </TableCell>
               <TableCell className="text-right font-mono text-muted-foreground">
                 {entry.greeks.delta.toFixed(2)}
@@ -292,41 +176,39 @@ function RankingTable({
   );
 }
 
-export default function DashboardPage() {
-  const [stats, setStats] = useState<ContractDashboardStats | null>(null);
-  const [rankings, setRankings] = useState<Record<CategoryKey, ContractEntry[]>>({
-    dragon_tiger: [],
-    individual: [],
-    etf: [],
-  });
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<ContractEntry | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+function toContractCode(s: ClassifiedSignal): string {
+  const exp = s.expiration.replace(/-/g, "").slice(2);
+  return `${s.symbol}${exp}${s.option_type}${s.strike}`;
+}
 
-  const load = async () => {
-    setLoading(true);
-    const [s, dt, ind, etf] = await Promise.all([
-      getContractStats(),
-      getContractRanking("dragon_tiger"),
-      getContractRanking("individual"),
-      getContractRanking("etf"),
-    ]);
-    setStats(s);
-    setRankings({
-      dragon_tiger: dt.rankings,
-      individual: ind.rankings,
-      etf: etf.rankings,
-    });
-    setLoading(false);
-  };
+export default function DashboardPage() {
+  const router = useRouter();
+  const [stats, setStats] = useState<ContractDashboardStats | null>(null);
+  const [signals, setSignals] = useState<ClassifiedSignal[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    load();
+    let cancelled = false;
+    Promise.all([getContractStats(), getSignals()]).then(([s, sig]) => {
+      if (cancelled) return;
+      setStats(s);
+      setSignals(sig.signals);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
 
+  const handleRefresh = () => {
+    setLoading(true);
+    Promise.all([getContractStats(), getSignals()]).then(([s, sig]) => {
+      setStats(s);
+      setSignals(sig.signals);
+      setLoading(false);
+    });
+  };
+
   const handleSelect = (entry: ContractEntry) => {
-    setSelected(entry);
-    setDialogOpen(true);
+    router.push(`/dashboard/signals/${entry.contract_code}`);
   };
 
   if (loading) {
@@ -336,6 +218,8 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  if (!stats) return null;
 
   return (
     <div className="space-y-6">
@@ -347,124 +231,137 @@ export default function DashboardPage() {
             期权龙虎榜
           </h1>
           <p className="text-sm text-muted-foreground">
-            全市场期权成交量排行 — {stats?.date}
+            全市场期权成交量排行 — {stats.date}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load}>
+        <Button variant="outline" size="sm" onClick={handleRefresh}>
           <RefreshCw className="mr-2 h-4 w-4" />
           刷新
         </Button>
       </div>
 
       {/* Stats Cards */}
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="border-border bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                总合约数
-              </CardTitle>
-              <BarChart3 className="h-4 w-4 text-blue-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-blue-400">
-                {stats.total_contracts.toLocaleString()}
-              </div>
-            </CardContent>
-          </Card>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="border-border bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              总合约数
+            </CardTitle>
+            <BarChart3 className="h-4 w-4 text-blue-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-blue-400">
+              {stats.total_contracts.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className="border-border bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                总成交量
-              </CardTitle>
-              <Activity className="h-4 w-4 text-purple-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-purple-400">
-                {(stats.total_volume / 10000).toFixed(0)}万
-              </div>
-            </CardContent>
-          </Card>
+        <Card className="border-border bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              总成交量
+            </CardTitle>
+            <Activity className="h-4 w-4 text-purple-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-purple-400">
+              {(stats.total_volume / 10000).toFixed(0)}万
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className="border-border bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                总成交额
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-green-400">
-                ${stats.total_premium.toFixed(1)}M
-              </div>
-            </CardContent>
-          </Card>
+        <Card className="border-border bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              总成交额
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-green-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-green-400">
+              ${stats.total_premium.toFixed(1)}M
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className="border-border bg-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Call/Put 比
+        <Card className="border-border bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Call/Put 比
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-red-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-400">
+              {stats.call_put_ratio.toFixed(2)}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Signals Summary */}
+      {signals.length > 0 && (
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Target className="h-4 w-4 text-purple-400" />
+                今日信号 — {signals.length} 条
               </CardTitle>
-              <TrendingUp className="h-4 w-4 text-red-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-red-400">
-                {stats.call_put_ratio.toFixed(2)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/dashboard/signals")}
+              >
+                查看全部 →
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {signals.slice(0, 6).map((sig) => (
+                <button
+                  key={`${sig.symbol}-${sig.strike}-${sig.expiration}`}
+                  onClick={() => router.push(`/dashboard/signals/${toContractCode(sig)}`)}
+                  className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <span className="font-mono font-bold">{sig.symbol}</span>
+                  <Badge
+                    variant="outline"
+                    className={
+                      sig.option_type === "C"
+                        ? "border-red-500/30 text-red-400 text-xs"
+                        : "border-green-500/30 text-green-400 text-xs"
+                    }
+                  >
+                    {sig.option_type}
+                  </Badge>
+                  <span className="text-muted-foreground">${sig.strike}</span>
+                  <Badge
+                    variant="secondary"
+                    className={
+                      sig.tier === "🔴 conviction"
+                        ? "bg-red-500/20 text-red-400"
+                        : sig.tier === "🟠 strong"
+                        ? "bg-orange-500/20 text-orange-400"
+                        : "bg-yellow-500/20 text-yellow-400"
+                    }
+                  >
+                    {sig.composite_score}
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Top Movers */}
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {stats.top_big_mover && (
-            <Card className="border-border bg-card">
-              <CardHeader>
-                <CardTitle className="text-base">🚀 最大波动</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-lg">
-                    {stats.top_big_mover.contract_code}
-                  </span>
-                  <ChangeBadge pct={stats.top_big_mover.price.change_pct} />
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {stats.top_big_mover.narrative}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          {stats.top_volume_spike && (
-            <Card className="border-border bg-card">
-              <CardHeader>
-                <CardTitle className="text-base">🔥 量能异动</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-lg">
-                    {stats.top_volume_spike.contract_code}
-                  </span>
-                  <VolumeBadge vsAvg={stats.top_volume_spike.volume.vs_avg} />
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {stats.top_volume_spike.narrative}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
-      {/* Rankings Tabs */}
+      {/* Volume Rankings */}
       <Tabs defaultValue="dragon_tiger" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="dragon_tiger">期权龙虎榜 Top 25</TabsTrigger>
-          <TabsTrigger value="individual">个股期权</TabsTrigger>
-          <TabsTrigger value="etf">ETF 期权</TabsTrigger>
+          <TabsTrigger value="dragon_tiger">总榜 Top 25</TabsTrigger>
+          <TabsTrigger value="individual">个股 Top 25</TabsTrigger>
+          <TabsTrigger value="etf">ETF Top 25</TabsTrigger>
         </TabsList>
 
         {(["dragon_tiger", "individual", "etf"] as CategoryKey[]).map((cat) => (
@@ -473,26 +370,29 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Flame className="h-4 w-4 text-orange-500" />
-                  {CATEGORY_LABELS[cat]} — {rankings[cat].length} 条
+                  {CATEGORY_LABELS[cat]} 成交量龙虎榜 — {stats[cat].length} 条
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <RankingTable
-                  entries={rankings[cat]}
-                  onSelect={handleSelect}
-                />
+                <RankingTable entries={stats[cat]} onSelect={handleSelect} />
               </CardContent>
             </Card>
           </TabsContent>
         ))}
       </Tabs>
 
-      {/* Detail Dialog */}
-      <ContractDetailDialog
-        entry={selected}
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-      />
+      {/* Premium Rankings */}
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-green-400" />
+            成交额龙虎榜 Top 10
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <RankingTable entries={stats.premium} onSelect={handleSelect} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

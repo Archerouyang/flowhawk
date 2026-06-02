@@ -20,8 +20,8 @@ class TestContractRankingGenerator:
         meta = generate_symbol_meta(symbols)
         return generate_contract_rankings(snapshot, meta)
 
-    def test_returns_three_categories(self, rankings):
-        assert set(rankings.keys()) == {"dragon_tiger", "individual", "etf"}
+    def test_returns_four_categories(self, rankings):
+        assert set(rankings.keys()) == {"dragon_tiger", "individual", "etf", "premium"}
 
     def test_dragon_tiger_has_up_to_25(self, rankings):
         assert len(rankings["dragon_tiger"]) <= 25
@@ -46,9 +46,15 @@ class TestContractRankingGenerator:
             assert e.is_etf
 
     def test_ranking_is_sorted_by_volume_desc(self, rankings):
-        for cat, entries in rankings.items():
+        for cat in ["dragon_tiger", "individual", "etf"]:
+            entries = rankings[cat]
             volumes = [e.volume for e in entries]
             assert volumes == sorted(volumes, reverse=True)
+
+    def test_premium_is_sorted_by_premium_desc(self, rankings):
+        entries = rankings["premium"]
+        premiums = [e.premium for e in entries]
+        assert premiums == sorted(premiums, reverse=True)
 
     def test_entries_have_greeks(self, rankings):
         for cat, entries in rankings.items():

@@ -98,9 +98,18 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`);
+  if (!res.ok) {
+    throw new Error(`API error ${res.status}: ${await res.text()}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 /* ─── Mock data (used when backend is not running) ─── */
 
-function mockScreen(_params: ScreenParams): ScreenResponse {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function mockScreen(_screenParams: ScreenParams): ScreenResponse {
   return {
     count: 5,
     candidates: [
@@ -329,14 +338,14 @@ export async function screen(params: ScreenParams): Promise<ScreenResponse> {
   return post<ScreenResponse>("/screen", params);
 }
 
-export async function getSignals(symbols: string[]): Promise<SignalResponse> {
+export async function getSignals(symbols?: string[]): Promise<SignalResponse> {
   if (USE_MOCK) return mockSignals();
-  return post<SignalResponse>("/signals", { symbols });
+  return post<SignalResponse>("/signals", symbols ? { symbols } : {});
 }
 
 export async function getDashboard(): Promise<DashboardSummary> {
   if (USE_MOCK) return mockDashboard();
-  return post<DashboardSummary>("/dashboard", {});
+  return get<DashboardSummary>("/dashboard");
 }
 
 // ─── Contract-Level Ranking API ───
@@ -386,6 +395,7 @@ export interface ContractEntry {
   oi: ContractOI;
   iv: ContractIV;
   greeks: ContractGreeks;
+  leap_cp_ratio: number;
   narrative: string;
 }
 
@@ -402,8 +412,10 @@ export interface ContractDashboardStats {
   total_volume: number;
   total_premium: number;
   call_put_ratio: number;
-  top_big_mover: ContractEntry | null;
-  top_volume_spike: ContractEntry | null;
+  dragon_tiger: ContractEntry[];
+  individual: ContractEntry[];
+  etf: ContractEntry[];
+  premium: ContractEntry[];
 }
 
 function makeContract(
@@ -432,6 +444,7 @@ function makeContract(
   theta: number,
   vega: number,
   narrative: string,
+  leapCp: number = 0,
 ): ContractEntry {
   return {
     rank,
@@ -446,6 +459,7 @@ function makeContract(
     oi: { total: oi, change: oiChg },
     iv: { current: iv, change_pct: ivChg },
     greeks: { delta, gamma, theta, vega },
+    leap_cp_ratio: leapCp,
     narrative,
   };
 }
@@ -465,6 +479,7 @@ const MOCK_DRAGON_TIGER: ContractEntry[] = [
 
 const MOCK_INDIVIDUAL: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => !e.is_etf).slice(0, 8);
 const MOCK_ETF_NEW: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => e.is_etf).slice(0, 5);
+const MOCK_PREMIUM: ContractEntry[] = [...MOCK_DRAGON_TIGER].sort((a, b) => b.volume.premium - a.volume.premium).slice(0, 25).map((e, i) => ({ ...e, rank: i + 1 }));
 
 function mockContractRanking(category: string): ContractRankingResponse {
   const map: Record<string, ContractEntry[]> = {
@@ -483,8 +498,10 @@ function mockContractStats(): ContractDashboardStats {
     total_volume: 2340500,
     total_premium: 324.5,
     call_put_ratio: 2.04,
-    top_big_mover: MOCK_DRAGON_TIGER[3], // SPCE
-    top_volume_spike: MOCK_DRAGON_TIGER[3], // SPCE
+    dragon_tiger: MOCK_DRAGON_TIGER,
+    individual: MOCK_INDIVIDUAL,
+    etf: MOCK_ETF_NEW,
+    premium: MOCK_PREMIUM,
   };
 }
 
@@ -495,5 +512,5 @@ export async function getContractRanking(category: string = "dragon_tiger"): Pro
 
 export async function getContractStats(): Promise<ContractDashboardStats> {
   if (USE_MOCK) return mockContractStats();
-  return post<ContractDashboardStats>("/dashboard", {});
+  return get<ContractDashboardStats>("/dashboard");
 }
