@@ -41,3 +41,6 @@ frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/dist/
+
+# Generated mock data
+frontend/public/mock_signals.json
