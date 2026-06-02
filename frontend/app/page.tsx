@@ -108,7 +108,7 @@ function RankingTable({
           <TableRow className="border-border hover:bg-transparent">
             <TableHead className="w-10">#</TableHead>
             <TableHead>合约</TableHead>
-            <TableHead className="w-16">类型</TableHead>
+            <TableHead className="w-16">Type</TableHead>
             <TableHead className="text-right">最新价</TableHead>
             <TableHead className="text-right">涨跌幅</TableHead>
             <TableHead className="text-right">成交量</TableHead>

@@ -249,7 +249,7 @@ export default function SignalDetailPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             {detail.underlying} · ${detail.strike} · {detail.expiration} ·
-            {detail.option_type === "C" ? "认购" : "认沽"}
+            {detail.option_type === "C" ? "Call" : "Put"}
           </p>
         </div>
         {isSignal && analysis && (
@@ -290,10 +290,10 @@ export default function SignalDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-              {detail.volume.toLocaleString()}
+              {detail.volume?.toLocaleString() ?? "-"}
             </div>
             <div className="text-xs text-muted-foreground">
-              OI: {detail.open_interest.toLocaleString()}
+              OI: {detail.open_interest?.toLocaleString() ?? "-"}
             </div>
           </CardContent>
         </Card>
@@ -465,9 +465,9 @@ export default function SignalDetailPage() {
                     }`}
                   >
                     <TableCell className="font-mono">{t.time}</TableCell>
-                    <TableCell className="font-mono">${t.price.toFixed(2)}</TableCell>
+                    <TableCell className="font-mono">${t.price?.toFixed(2) ?? "-"}</TableCell>
                     <TableCell className="font-mono">
-                      {t.volume.toLocaleString()}
+                      {t.volume?.toLocaleString() ?? "-"}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -478,7 +478,7 @@ export default function SignalDetailPage() {
                             : "border-rose-500/30 text-rose-400"
                         }
                       >
-                        {t.side === "BUY" ? "买入" : "卖出"}
+                        {t.side === "BUY" ? "Buy" : "Sell"}
                       </Badge>
                     </TableCell>
                     <TableCell>
