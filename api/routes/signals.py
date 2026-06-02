@@ -2,13 +2,11 @@
 
 from datetime import date
 
-import polars as pl
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from src.data_sources.mock import generate_options_snapshot, generate_symbol_meta
 from src.screening.options_anomaly import OptionsAnomalyScreener
-from src.screening.leaps_selector import LEAPSSelector
 from src.screening.signal_classifier import SignalClassifier
 
 router = APIRouter()
@@ -69,9 +67,7 @@ def _compute_tier(score: int) -> str:
 def _build_tags(detected, stats: dict) -> list[str]:
     tags = []
     leap = stats.get("leap_ratio", 0)
-    cp = stats.get("cp_ratio_all", 0)
     price_change = stats.get("price_change_day", 0)
-    vol_spike = stats.get("volume_vs_avg", 1.0)
 
     signal_type = detected.signal_type.value if hasattr(detected.signal_type, "value") else str(detected.signal_type)
 
@@ -116,15 +112,6 @@ async def generate_signals(request: SignalRequest) -> SignalResponse:
 
     anomaly_df = OptionsAnomalyScreener().screen(snapshot)
     meta_map = generate_symbol_meta(request.symbols)
-
-    # Stage 2: Technical filter placeholder
-    # TODO: integrate real stock technical data from FMP
-    tech_df = pl.DataFrame(
-        {
-            "symbol": request.symbols,
-            "technical_score": [0.5] * len(request.symbols),
-        }
-    )
 
     # Classify anomalies into signal types
     classifier = SignalClassifier(history_symbols=set())
