@@ -475,10 +475,25 @@ const MOCK_DRAGON_TIGER: ContractEntry[] = [
   makeContract(8, "AMD", false, "AMD261017C155", 155, "2026-10-17", "C", 8.50, 9.80, 7.40, 15.2, 8.20, 8.80, 16500, 7.1, 14.03, 6500, 1500, 0.42, 6.8, 0.65, 0.018, -0.035, 0.15, "⚡ 7.1x volume | Semiconductor momentum — 155c Oct"),
   makeContract(9, "SMH", true, "SMH260605P550", 550, "2026-06-05", "P", 8.50, 10.20, 7.00, 18.5, 8.20, 8.80, 15200, 9.4, 12.92, 22100, 4200, 0.28, 5.2, -0.38, 0.008, -0.055, 0.25, "🔥 9.4x volume | Put wall at 550 — institutions hedging chip risk"),
   makeContract(10, "META", false, "META261218C580", 580, "2026-12-18", "C", 32.00, 35.00, 29.50, 6.8, 31.50, 32.50, 14800, 4.2, 47.36, 11200, 1800, 0.30, 2.8, 0.62, 0.011, -0.040, 0.20, "📈 4.2x volume | Metaverse + AI dual narrative call flow"),
+  makeContract(11, "NFLX", false, "NFLX260815C750", 750, "2026-08-15", "C", 18.20, 20.50, 16.80, 4.5, 18.00, 18.50, 14200, 5.8, 25.84, 9800, 1200, 0.35, 3.2, 0.58, 0.009, -0.048, 0.24, "⚡ 5.8x volume | Streaming wars heating up — far-dated call flow"),
+  makeContract(12, "JPM", false, "JPM260815C220", 220, "2026-08-15", "C", 5.80, 6.50, 5.20, 2.1, 5.60, 5.90, 13800, 4.5, 8.00, 22100, 800, 0.22, 1.5, 0.48, 0.012, -0.038, 0.18, "📈 4.5x volume | Banking sector rotation into calls"),
+  makeContract(13, "IWM", true, "IWM260815C215", 215, "2026-08-15", "C", 4.20, 4.80, 3.80, 3.2, 4.10, 4.30, 13500, 3.9, 5.67, 18500, 600, 0.28, 2.1, 0.52, 0.010, -0.042, 0.22, "📈 3.9x volume | Small cap resurgence — Russell 2000 call positioning"),
+  makeContract(14, "AVGO", false, "AVGO260815C185", 185, "2026-08-15", "C", 8.50, 9.80, 7.60, 7.8, 8.30, 8.70, 13200, 6.2, 11.22, 7600, 1400, 0.32, 4.5, 0.62, 0.013, -0.045, 0.20, "⚡ 6.2x volume | Broadcom AI chip demand driving call volume"),
+  makeContract(15, "XLF", true, "XLF260815C42", 42, "2026-08-15", "C", 2.10, 2.40, 1.90, 2.8, 2.05, 2.15, 12800, 4.1, 2.69, 15200, 500, 0.25, 1.8, 0.55, 0.011, -0.035, 0.16, "📈 4.1x volume | Financial sector ETF call accumulation"),
+  makeContract(16, "JNJ", false, "JNJ260815C165", 165, "2026-08-15", "C", 3.50, 3.90, 3.20, 1.5, 3.40, 3.60, 12500, 3.5, 4.38, 11200, 400, 0.20, 0.8, 0.45, 0.010, -0.032, 0.15, "📈 3.5x volume | Healthcare defensive positioning with calls"),
+  makeContract(17, "WMT", false, "WMT260815C105", 105, "2026-08-15", "C", 2.80, 3.10, 2.60, 1.8, 2.75, 2.85, 12200, 4.2, 3.42, 8900, 350, 0.18, 1.2, 0.50, 0.012, -0.030, 0.14, "📈 4.2x volume | Consumer staples call flow ahead of earnings"),
+  makeContract(18, "XLE", true, "XLE260815C92", 92, "2026-08-15", "C", 3.80, 4.20, 3.50, 5.2, 3.70, 3.90, 11800, 5.5, 4.49, 9800, 800, 0.30, 3.5, 0.58, 0.014, -0.040, 0.19, "⚡ 5.5x volume | Energy sector rotation — OPEC decision pending"),
+  makeContract(19, "ORCL", false, "ORCL260815C175", 175, "2026-08-15", "C", 6.20, 7.00, 5.60, 6.5, 6.10, 6.30, 11500, 5.8, 7.13, 6500, 900, 0.28, 4.2, 0.60, 0.011, -0.042, 0.21, "⚡ 5.8x volume | Cloud database demand driving Oracle call flow"),
+  makeContract(20, "BAC", false, "BAC260815C42", 42, "2026-08-15", "C", 1.85, 2.10, 1.65, 3.2, 1.80, 1.90, 11200, 4.8, 2.07, 14500, 600, 0.26, 2.5, 0.52, 0.013, -0.036, 0.17, "📈 4.8x volume | Bank of America call buildup — rate cut bets"),
+  makeContract(21, "XLK", true, "XLK260815C230", 230, "2026-08-15", "C", 5.50, 6.10, 5.00, 4.8, 5.40, 5.60, 10800, 4.5, 5.94, 12100, 700, 0.24, 2.8, 0.54, 0.009, -0.038, 0.20, "📈 4.5x volume | Tech sector ETF call flow — AI momentum"),
+  makeContract(22, "UNH", false, "UNH260815C620", 620, "2026-08-15", "C", 12.50, 14.00, 11.50, 2.5, 12.20, 12.80, 10500, 3.8, 13.13, 5200, 450, 0.22, 1.5, 0.48, 0.008, -0.045, 0.22, "📈 3.8x volume | UnitedHealth defensive call positioning"),
+  makeContract(23, "HD", false, "HD260815C380", 380, "2026-08-15", "C", 7.80, 8.60, 7.10, 3.5, 7.60, 8.00, 10200, 4.2, 7.96, 4800, 380, 0.20, 2.1, 0.50, 0.010, -0.040, 0.18, "📈 4.2x volume | Home improvement calls — housing data pending"),
+  makeContract(24, "CRM", false, "CRM260815C315", 315, "2026-08-15", "C", 9.50, 10.80, 8.60, 8.2, 9.30, 9.70, 9800, 6.5, 9.31, 5600, 1100, 0.30, 5.2, 0.62, 0.012, -0.048, 0.23, "⚡ 6.5x volume | Salesforce AI monetization driving call demand"),
+  makeContract(25, "PFE", false, "PFE260815C32", 32, "2026-08-15", "C", 1.20, 1.40, 1.10, 2.8, 1.18, 1.22, 9500, 3.5, 1.14, 18200, 300, 0.24, 1.8, 0.55, 0.015, -0.028, 0.13, "📈 3.5x volume | Pharma value play — deep OTM call accumulation"),
 ];
 
-const MOCK_INDIVIDUAL: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => !e.is_etf).slice(0, 8);
-const MOCK_ETF_NEW: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => e.is_etf).slice(0, 5);
+const MOCK_INDIVIDUAL: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => !e.is_etf).slice(0, 25);
+const MOCK_ETF_NEW: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => e.is_etf).slice(0, 25);
 const MOCK_PREMIUM: ContractEntry[] = [...MOCK_DRAGON_TIGER].sort((a, b) => b.volume.premium - a.volume.premium).slice(0, 25).map((e, i) => ({ ...e, rank: i + 1 }));
 
 function mockContractRanking(category: string): ContractRankingResponse {
