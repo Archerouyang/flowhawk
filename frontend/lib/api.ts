@@ -338,3 +338,162 @@ export async function getDashboard(): Promise<DashboardSummary> {
   if (USE_MOCK) return mockDashboard();
   return post<DashboardSummary>("/dashboard", {});
 }
+
+// ─── Contract-Level Ranking API ───
+
+export interface ContractPrice {
+  last: number;
+  high: number;
+  low: number;
+  change_pct: number;
+  bid: number;
+  ask: number;
+}
+
+export interface ContractVolume {
+  total: number;
+  vs_avg: number;
+  premium: number;
+}
+
+export interface ContractOI {
+  total: number;
+  change: number;
+}
+
+export interface ContractIV {
+  current: number;
+  change_pct: number;
+}
+
+export interface ContractGreeks {
+  delta: number;
+  gamma: number;
+  theta: number;
+  vega: number;
+}
+
+export interface ContractEntry {
+  rank: number;
+  underlying: string;
+  is_etf: boolean;
+  contract_code: string;
+  strike: number;
+  expiration: string;
+  option_type: string;
+  price: ContractPrice;
+  volume: ContractVolume;
+  oi: ContractOI;
+  iv: ContractIV;
+  greeks: ContractGreeks;
+  narrative: string;
+}
+
+export interface ContractRankingResponse {
+  date: string;
+  category: string;
+  total: number;
+  rankings: ContractEntry[];
+}
+
+export interface ContractDashboardStats {
+  date: string;
+  total_contracts: number;
+  total_volume: number;
+  total_premium: number;
+  call_put_ratio: number;
+  top_big_mover: ContractEntry | null;
+  top_volume_spike: ContractEntry | null;
+}
+
+function makeContract(
+  rank: number,
+  underlying: string,
+  isEtf: boolean,
+  code: string,
+  strike: number,
+  exp: string,
+  optType: string,
+  last: number,
+  high: number,
+  low: number,
+  change: number,
+  bid: number,
+  ask: number,
+  vol: number,
+  vsAvg: number,
+  prem: number,
+  oi: number,
+  oiChg: number,
+  iv: number,
+  ivChg: number,
+  delta: number,
+  gamma: number,
+  theta: number,
+  vega: number,
+  narrative: string,
+): ContractEntry {
+  return {
+    rank,
+    underlying,
+    is_etf: isEtf,
+    contract_code: code,
+    strike,
+    expiration: exp,
+    option_type: optType,
+    price: { last, high, low, change_pct: change, bid, ask },
+    volume: { total: vol, vs_avg: vsAvg, premium: prem },
+    oi: { total: oi, change: oiChg },
+    iv: { current: iv, change_pct: ivChg },
+    greeks: { delta, gamma, theta, vega },
+    narrative,
+  };
+}
+
+const MOCK_DRAGON_TIGER: ContractEntry[] = [
+  makeContract(1, "AAPL", false, "AAPL261218C185", 185, "2026-12-18", "C", 12.50, 13.20, 11.80, 5.2, 12.00, 13.00, 34200, 8.5, 42.75, 12500, 1200, 0.32, 2.1, 0.72, 0.012, -0.035, 0.18, "🔥 8.5x volume | LEAPS call accumulation post-earnings"),
+  makeContract(2, "NVDA", false, "NVDA270115C130", 130, "2027-01-15", "C", 22.00, 24.50, 20.10, 8.1, 21.50, 22.50, 28900, 12.3, 63.58, 15600, 3400, 0.38, 4.5, 0.75, 0.015, -0.038, 0.25, "🔥 12.3x volume | AI chip momentum driving far-dated calls"),
+  makeContract(3, "TSLA", false, "TSLA260919C220", 220, "2026-09-19", "C", 18.30, 20.00, 16.50, 12.4, 17.80, 18.80, 24500, 6.2, 44.84, 8900, 2100, 0.45, 8.2, 0.68, 0.015, -0.042, 0.22, "⚡ 6.2x volume | Flat stock but call buildup — directional bet"),
+  makeContract(4, "SPCE", false, "SPCE260717C7", 7, "2026-07-17", "C", 1.85, 2.40, 1.20, 28.5, 1.75, 1.95, 22300, 15.2, 4.13, 4200, 1800, 0.55, 15.0, 0.65, 0.015, -0.042, 0.22, "🔥 15.2x volume | First appearance, retail-driven aerospace narrative"),
+  makeContract(5, "SPY", true, "SPY260620C545", 545, "2026-06-20", "C", 8.20, 9.10, 7.50, 3.8, 8.00, 8.40, 19800, 4.1, 16.24, 32100, 800, 0.18, 1.2, 0.52, 0.008, -0.055, 0.28, "📈 4.1x volume | Broad market call positioning ahead of Fed"),
+  makeContract(6, "QQQ", true, "QQQ260620C495", 495, "2026-06-20", "C", 7.80, 8.50, 7.10, 4.2, 7.60, 8.00, 18500, 3.8, 14.43, 28500, 600, 0.22, 1.8, 0.48, 0.009, -0.052, 0.30, "📈 3.8x volume | Tech sector call flow on AI optimism"),
+  makeContract(7, "MSFT", false, "MSFT261120C420", 420, "2026-11-20", "C", 28.50, 30.00, 27.00, 2.1, 28.00, 29.00, 17200, 5.5, 49.02, 7800, 900, 0.25, -1.5, 0.70, 0.010, -0.042, 0.22, "⚡ 5.5x volume | Smart money building 420c Nov"),
+  makeContract(8, "AMD", false, "AMD261017C155", 155, "2026-10-17", "C", 8.50, 9.80, 7.40, 15.2, 8.20, 8.80, 16500, 7.1, 14.03, 6500, 1500, 0.42, 6.8, 0.65, 0.018, -0.035, 0.15, "⚡ 7.1x volume | Semiconductor momentum — 155c Oct"),
+  makeContract(9, "SMH", true, "SMH260605P550", 550, "2026-06-05", "P", 8.50, 10.20, 7.00, 18.5, 8.20, 8.80, 15200, 9.4, 12.92, 22100, 4200, 0.28, 5.2, -0.38, 0.008, -0.055, 0.25, "🔥 9.4x volume | Put wall at 550 — institutions hedging chip risk"),
+  makeContract(10, "META", false, "META261218C580", 580, "2026-12-18", "C", 32.00, 35.00, 29.50, 6.8, 31.50, 32.50, 14800, 4.2, 47.36, 11200, 1800, 0.30, 2.8, 0.62, 0.011, -0.040, 0.20, "📈 4.2x volume | Metaverse + AI dual narrative call flow"),
+];
+
+const MOCK_INDIVIDUAL: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => !e.is_etf).slice(0, 8);
+const MOCK_ETF_NEW: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => e.is_etf).slice(0, 5);
+
+function mockContractRanking(category: string): ContractRankingResponse {
+  const map: Record<string, ContractEntry[]> = {
+    dragon_tiger: MOCK_DRAGON_TIGER,
+    individual: MOCK_INDIVIDUAL,
+    etf: MOCK_ETF_NEW,
+  };
+  const entries = map[category] || MOCK_DRAGON_TIGER;
+  return { date: new Date().toISOString().split("T")[0], category, total: entries.length, rankings: entries };
+}
+
+function mockContractStats(): ContractDashboardStats {
+  return {
+    date: new Date().toISOString().split("T")[0],
+    total_contracts: 600,
+    total_volume: 2340500,
+    total_premium: 324.5,
+    call_put_ratio: 2.04,
+    top_big_mover: MOCK_DRAGON_TIGER[3], // SPCE
+    top_volume_spike: MOCK_DRAGON_TIGER[3], // SPCE
+  };
+}
+
+export async function getContractRanking(category: string = "dragon_tiger"): Promise<ContractRankingResponse> {
+  if (USE_MOCK) return mockContractRanking(category);
+  return post<ContractRankingResponse>("/ranking", { category });
+}
+
+export async function getContractStats(): Promise<ContractDashboardStats> {
+  if (USE_MOCK) return mockContractStats();
+  return post<ContractDashboardStats>("/dashboard", {});
+}

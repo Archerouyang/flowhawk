@@ -1,174 +1,246 @@
-"""Daily anomaly ranking generator.
+"""Daily anomaly ranking generator — contract-level leaderboard.
 
-Produces top-30 rankings per category (big_cap / small_cap / etf).
+Produces:
+1. Volume Dragon-Tiger Ranking (Top 25 by volume across all contracts)
+2. Individual Stock Options Anomaly Ranking (top contracts per stock)
+3. ETF Options Anomaly Ranking (top contracts per ETF)
 """
 
 from dataclasses import dataclass
+from datetime import date
+
+import numpy as np
+import polars as pl
 
 from src.data_sources.mock import SymbolMeta
 
 
 @dataclass(frozen=True, slots=True)
-class RankingEntry:
-    """Single entry in the anomaly ranking."""
+class ContractEntry:
+    """Single option contract in the leaderboard."""
 
     rank: int
-    symbol: str
-    category: str
-    anomaly_score: float
-    top_factors: list[dict]
-    contract: dict
-    greeks: dict
+    underlying: str  # e.g. AAPL
+    is_etf: bool
+    contract_code: str  # e.g. AAPL260618C185
+    strike: float
+    expiration: str  # YYYY-MM-DD
+    option_type: str  # C or P
+    # Price
+    last_price: float
+    high: float
+    low: float
+    change_pct: float  # vs previous close
+    bid: float
+    ask: float
+    # Volume
+    volume: int
+    volume_vs_avg: float  # multiple of 20-day average
+    premium: float  # USD in millions
+    # OI
+    open_interest: int
+    oi_change: int
+    # IV
+    iv: float
+    iv_change_pct: float
+    # Greeks
+    delta: float
+    gamma: float
+    theta: float
+    vega: float
+    # Narrative
     narrative: str
 
 
 class RankingGenerator:
-    """Generate daily anomaly rankings by category."""
+    """Generate daily contract-level rankings."""
 
-    TOP_N = 30
+    DRAGON_TIGER_TOP_N = 25
+    CATEGORY_TOP_N = 15
 
     def __init__(
         self,
-        scores: dict[str, float],
+        df_snapshot: "pl.DataFrame",
         meta_map: dict[str, SymbolMeta],
-        factor_map: dict[str, dict[str, float]],
     ):
-        """Initialize with computed scores and metadata.
-
-        Args:
-            scores: {symbol: anomaly_score}
-            meta_map: {symbol: SymbolMeta}
-            factor_map: {symbol: {factor_name: value}}
-        """
-        self.scores = scores
+        self.df = df_snapshot
         self.meta = meta_map
-        self.factors = factor_map
 
-    def generate(self) -> dict[str, list[RankingEntry]]:
-        """Generate rankings for all categories.
+    def generate(self) -> dict[str, list[ContractEntry]]:
+        """Generate all rankings.
 
         Returns:
-            {category: [RankingEntry, ...]}
+            {
+                "dragon_tiger": [...],   # Top 25 by volume (all contracts)
+                "individual": [...],     # Top stock-option contracts
+                "etf": [...],            # Top ETF-option contracts
+            }
         """
-        # Group symbols by category
-        by_category: dict[str, list[tuple[str, float]]] = {
-            "big_cap": [],
-            "small_cap": [],
-            "etf": [],
+        if self.df.is_empty():
+            return {"dragon_tiger": [], "individual": [], "etf": []}
+
+        # Build contract entries from snapshot
+        all_entries: list[ContractEntry] = []
+        for row in self.df.iter_rows(named=True):
+            entry = self._build_entry(row)
+            all_entries.append(entry)
+
+        # Sort by volume desc
+        all_entries.sort(key=lambda e: e.volume, reverse=True)
+
+        import dataclasses
+
+        # Dragon-Tiger: Top 25 overall
+        dragon_tiger = all_entries[: self.DRAGON_TIGER_TOP_N]
+        dragon_tiger = [
+            dataclasses.replace(e, rank=i + 1) for i, e in enumerate(dragon_tiger)
+        ]
+
+        # Individual stocks (not ETF)
+        individual = [e for e in all_entries if not e.is_etf][: self.CATEGORY_TOP_N]
+        individual = [
+            dataclasses.replace(e, rank=i + 1) for i, e in enumerate(individual)
+        ]
+
+        # ETF
+        etf_entries = [e for e in all_entries if e.is_etf][: self.CATEGORY_TOP_N]
+        etf_entries = [
+            dataclasses.replace(e, rank=i + 1) for i, e in enumerate(etf_entries)
+        ]
+
+        return {
+            "dragon_tiger": dragon_tiger,
+            "individual": individual,
+            "etf": etf_entries,
         }
 
-        for sym, score in self.scores.items():
-            meta = self.meta.get(sym)
-            if meta is None:
-                continue
-            cat = meta.category
-            if cat in by_category:
-                by_category[cat].append((sym, score))
+    def _build_entry(self, row: dict) -> ContractEntry:
+        """Build a ContractEntry from a snapshot row."""
+        sym = row["symbol"]
+        meta = self.meta.get(sym)
+        is_etf = meta.is_etf if meta else False
 
-        # Sort and select top N per category
-        rankings: dict[str, list[RankingEntry]] = {}
-        for cat, items in by_category.items():
-            sorted_items = sorted(items, key=lambda x: x[1], reverse=True)
-            top = sorted_items[: self.TOP_N]
+        strike = float(row["strike"])
+        exp = row["expiration"]
+        if isinstance(exp, date):
+            exp_str = exp.strftime("%Y-%m-%d")
+            exp_code = exp.strftime("%y%m%d")
+        else:
+            exp_str = str(exp)
+            exp_code = exp_str[2:4] + exp_str[5:7] + exp_str[8:10]
 
-            entries = []
-            for rank, (sym, score) in enumerate(top, 1):
-                entry = self._build_entry(rank, sym, cat, score)
-                entries.append(entry)
+        option_type = row["option_type"]
+        contract_code = f"{sym}{exp_code}{option_type}{strike:g}"
 
-            rankings[cat] = entries
+        last_price = float(row["last_price"])
+        bid = float(row["bid"])
+        ask = float(row["ask"])
+        iv = float(row.get("implied_volatility", 0.3))
+        volume = int(row["volume"])
+        oi = int(row["open_interest"])
 
-        return rankings
+        # Mock HLC: use last_price as close, generate high/low from IV
+        rng = np.random.RandomState(hash(contract_code) % 2**31)
+        daily_vol = iv / np.sqrt(252)  # approximate daily vol from IV
+        high = last_price * (1 + abs(rng.normal(0, daily_vol)))
+        low = last_price * (1 - abs(rng.normal(0, daily_vol)))
+        low = min(low, last_price)  # ensure low <= close
+        high = max(high, last_price)  # ensure high >= close
 
-    def _build_entry(
-        self, rank: int, symbol: str, category: str, score: float
-    ) -> RankingEntry:
-        """Build a single ranking entry."""
-        factors = self.factors.get(symbol, {})
+        # Mock change %
+        change_pct = rng.normal(0, daily_vol * 100)
 
-        # Top 3 factors driving the score
-        top_factors = self._top_factors(factors)
+        # Volume vs avg (mock)
+        volume_vs_avg = rng.uniform(1.5, 15.0)
 
-        # Contract info (placeholder)
-        contract = {
-            "strike": 0.0,
-            "expiration": "",
-            "option_type": "C",
-            "last_price": 0.0,
-        }
+        # Premium in millions
+        premium = last_price * volume * 100 / 1e6
 
-        # Greeks (placeholder)
-        greeks = {
-            "delta": factors.get("delta", 0.0),
-            "theta": 0.0,
-            "gamma": factors.get("gamma", 0.0),
-            "vega": factors.get("vega", 0.0),
-        }
+        # Mock OI change
+        oi_change = int(rng.randint(-5000, 10000))
+
+        # Mock IV change
+        iv_change_pct = rng.uniform(-15, 25)
+
+        # Greeks
+        delta = float(row.get("delta", 0.0))
+        gamma = float(row.get("gamma", 0.0))
+        theta = float(row.get("theta", 0.0))
+        vega = float(row.get("vega", 0.0))
 
         # Narrative
-        narrative = self._build_narrative(symbol, category, factors)
+        narrative = self._build_narrative(
+            sym, is_etf, option_type, volume, volume_vs_avg, iv_change_pct
+        )
 
-        return RankingEntry(
-            rank=rank,
-            symbol=symbol,
-            category=category,
-            anomaly_score=round(score, 1),
-            top_factors=top_factors,
-            contract=contract,
-            greeks=greeks,
+        return ContractEntry(
+            rank=0,  # assigned later
+            underlying=sym,
+            is_etf=is_etf,
+            contract_code=contract_code,
+            strike=strike,
+            expiration=exp_str,
+            option_type=option_type,
+            last_price=round(last_price, 2),
+            high=round(high, 2),
+            low=round(low, 2),
+            change_pct=round(change_pct, 2),
+            bid=round(bid, 2),
+            ask=round(ask, 2),
+            volume=volume,
+            volume_vs_avg=round(volume_vs_avg, 1),
+            premium=round(premium, 2),
+            open_interest=oi,
+            oi_change=oi_change,
+            iv=round(iv, 4),
+            iv_change_pct=round(iv_change_pct, 2),
+            delta=round(delta, 3),
+            gamma=round(gamma, 4),
+            theta=round(theta, 4),
+            vega=round(vega, 4),
             narrative=narrative,
         )
 
-    def _top_factors(self, factors: dict[str, float]) -> list[dict]:
-        """Extract top 3 factors by absolute normalized contribution."""
-        from src.scoring.anomaly import AnomalyScorer
-
-        scorer = AnomalyScorer()
-        contributions = []
-
-        for name, value in factors.items():
-            if name not in scorer.weights:
-                continue
-            weight = scorer.weights[name]
-            normalized = scorer._normalize(name, value)
-            contribution = normalized * weight
-            contributions.append(
-                {
-                    "factor": name,
-                    "value": round(value, 3),
-                    "contribution": round(contribution, 3),
-                }
-            )
-
-        contributions.sort(
-            key=lambda x: abs(float(x["contribution"])),  # type: ignore[arg-type]
-            reverse=True,
-        )
-        return contributions[:3]
-
     @staticmethod
-    def _build_narrative(symbol: str, category: str, factors: dict[str, float]) -> str:
-        """Generate one-liner narrative."""
-        cp = factors.get("volume_cp_ratio", 0.0)
-        leap_cp = factors.get("leap_volume_cp_ratio", 0.0)
-        voi = factors.get("voi_ratio", 0.0)
-        theta_r = factors.get("theta_price_ratio", 0.0)
+    def _build_narrative(
+        sym: str,
+        is_etf: bool,
+        option_type: str,
+        volume: int,
+        volume_vs_avg: float,
+        iv_change_pct: float,
+    ) -> str:
+        """Generate narrative for a contract."""
+        type_str = "Call" if option_type == "C" else "Put"
 
-        if category == "big_cap":
-            return f"LEAPS call C/P {leap_cp:.1f}x, θ/price {theta_r:.2%} — institutional accumulation"
-        elif category == "small_cap":
-            return (
-                f"{voi:.1f}x V/OI spike, C/P {cp:.1f}x — narrative-driven retail flow"
-            )
-        else:  # etf
-            return f"C/P {cp:.2f}, volume concentration — hedge/rotation flow"
+        if volume_vs_avg > 10:
+            flow = f"🔥 {volume_vs_avg:.1f}x volume spike"
+        elif volume_vs_avg > 5:
+            flow = f"⚡ {volume_vs_avg:.1f}x volume surge"
+        elif volume_vs_avg > 2:
+            flow = f"📈 {volume_vs_avg:.1f}x above avg"
+        else:
+            flow = ""
+
+        iv_str = ""
+        if iv_change_pct > 15:
+            iv_str = "IV jumping"
+        elif iv_change_pct < -10:
+            iv_str = "IV collapsing"
+
+        if is_etf:
+            base = f"{sym} {type_str} — hedge/rotation flow"
+        else:
+            base = f"{sym} {type_str} — directional bet"
+
+        parts = [p for p in [base, flow, iv_str] if p]
+        return " | ".join(parts)
 
 
-def generate_daily_rankings(
-    scores: dict[str, float],
+def generate_contract_rankings(
+    df_snapshot: "pl.DataFrame",
     meta_map: dict[str, SymbolMeta],
-    factor_map: dict[str, dict[str, float]],
-) -> dict[str, list[RankingEntry]]:
+) -> dict[str, list[ContractEntry]]:
     """Convenience function."""
-    generator = RankingGenerator(scores, meta_map, factor_map)
+    generator = RankingGenerator(df_snapshot, meta_map)
     return generator.generate()
