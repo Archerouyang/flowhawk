@@ -1,10 +1,12 @@
 """Trade signals API routes."""
 
+import re
 from datetime import date
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from src.data_sources.longbridge_ds import LongbridgeDataSource
 from src.data_sources.mock import generate_options_snapshot, generate_symbol_meta
 from src.screening.options_anomaly import OptionsAnomalyScreener
 from src.screening.signal_classifier import SignalClassifier
@@ -45,6 +47,13 @@ class SignalResult(BaseModel):
     asset_type: str
     cap_type: str
     sector: str
+    # Longbridge real-time data
+    call_volume: int = 0
+    put_volume: int = 0
+    stock_change_pct: float = 0.0
+    stock_price: float = 0.0
+    pre_market_price: float | None = None
+    post_market_price: float | None = None
 
 
 class SignalResponse(BaseModel):
@@ -117,6 +126,19 @@ async def generate_signals(request: SignalRequest) -> SignalResponse:
     anomaly_df = OptionsAnomalyScreener().screen(snapshot)
     meta_map = generate_symbol_meta(request.symbols)
 
+    # Fetch Longbridge real-time data for each symbol
+    lb = LongbridgeDataSource()
+    lb_data: dict[str, dict] = {}
+    for sym in request.symbols:
+        vol = lb.get_option_volume(f"{sym}.US")
+        quote = lb.get_quote(f"{sym}.US")
+        lb_data[sym] = {
+            "call_volume": vol.call_volume if vol else 0,
+            "put_volume": vol.put_volume if vol else 0,
+            "stock_change_pct": quote.change_pct if quote else 0.0,
+            "stock_price": quote.price if quote else 0.0,
+        }
+
     # Classify anomalies into signal types
     classifier = SignalClassifier(history_symbols=set())
     detected_signals = classifier.classify(anomaly_df, meta_map)
@@ -136,6 +158,7 @@ async def generate_signals(request: SignalRequest) -> SignalResponse:
         anom = anomaly_by_sym.get(sym)
         meta = meta_map.get(sym)
         stats = sym_stats.get(sym, {})
+        lb_sym = lb_data.get(sym, {})
 
         if anom is None:
             continue
@@ -177,7 +200,35 @@ async def generate_signals(request: SignalRequest) -> SignalResponse:
                 if meta
                 else "GROWTH",
                 sector=meta.sector if meta else "Unknown",
+                call_volume=lb_sym.get("call_volume", 0),
+                put_volume=lb_sym.get("put_volume", 0),
+                stock_change_pct=lb_sym.get("stock_change_pct", 0.0),
+                stock_price=lb_sym.get("stock_price", 0.0),
             )
         )
 
     return SignalResponse(count=len(signals), signals=signals)
+
+
+@router.get("/contract/{code}")
+async def get_contract_detail(code: str) -> dict:
+    """Get contract detail with Longbridge real-time data."""
+    m = re.match(r"^([A-Z]+)(\d{6})([CP])([\d.]+)$", code)
+    if not m:
+        return {"error": "Invalid contract code format"}
+
+    sym = m.group(1)
+
+    lb = LongbridgeDataSource()
+    vol = lb.get_option_volume(f"{sym}.US")
+    quote = lb.get_quote(f"{sym}.US")
+
+    return {
+        "code": code,
+        "symbol": sym,
+        "call_volume": vol.call_volume if vol else 0,
+        "put_volume": vol.put_volume if vol else 0,
+        "cp_ratio": vol.call_put_ratio if vol else 0.0,
+        "stock_price": quote.price if quote else 0.0,
+        "stock_change_pct": quote.change_pct if quote else 0.0,
+    }

@@ -15,13 +15,22 @@ import {
 } from "@/components/ui/table";
 import {
   ArrowLeft,
+  ArrowUpRight,
+  ArrowDownRight,
   TrendingUp,
   Activity,
   AlertTriangle,
   Target,
   Info,
+  Zap,
+  BarChart3,
+  Repeat,
 } from "lucide-react";
 import { getSignals, type ClassifiedSignal } from "@/lib/api";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface TradeRecord {
   time: string;
@@ -29,6 +38,16 @@ interface TradeRecord {
   volume: number;
   side: "BUY" | "SELL";
   flags: string[];
+}
+
+interface Analysis {
+  is_repeated: boolean;
+  repeat_count: number;
+  sweep_detected: boolean;
+  above_ask_count: number;
+  direction: "BULLISH" | "BEARISH" | "NEUTRAL";
+  confidence: number;
+  narrative: string;
 }
 
 interface ContractDetail {
@@ -49,17 +68,20 @@ interface ContractDetail {
   theta: number;
   vega: number;
   leap_cp_ratio: number;
+  // Longbridge fields
+  call_volume: number;
+  put_volume: number;
+  stock_change_pct: number;
+  stock_price: number;
+  pre_market_price: number | null;
+  post_market_price: number | null;
   trades: TradeRecord[];
-  analysis: {
-    is_repeated: boolean;
-    repeat_count: number;
-    sweep_detected: boolean;
-    above_ask_count: number;
-    direction: "BULLISH" | "BEARISH" | "NEUTRAL";
-    confidence: number;
-    narrative: string;
-  } | null;
+  analysis: Analysis | null;
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 /** Parse contract code: SYMBOLyymmddC/Pstrike */
 function parseContractCode(code: string): {
@@ -95,6 +117,7 @@ function seededRandom(seed: string): () => number {
   };
 }
 
+/** Generate ContractDetail with all Longbridge fields */
 function generateMockDetail(code: string): ContractDetail {
   const parsed = parseContractCode(code);
   if (!parsed) {
@@ -116,6 +139,12 @@ function generateMockDetail(code: string): ContractDetail {
       theta: 0,
       vega: 0,
       leap_cp_ratio: 0,
+      call_volume: 0,
+      put_volume: 0,
+      stock_change_pct: 0,
+      stock_price: 0,
+      pre_market_price: null,
+      post_market_price: null,
       trades: [],
       analysis: null,
     };
@@ -125,7 +154,7 @@ function generateMockDetail(code: string): ContractDetail {
   const rng = seededRandom(code);
   const isCall = option_type === "C";
 
-  // Generate realistic-looking but deterministic data
+  // Base contract data
   const basePrice = 5 + rng() * 45;
   const lastPrice = Math.round(basePrice * 100) / 100;
   const changePct = (rng() - 0.5) * 20;
@@ -139,6 +168,14 @@ function generateMockDetail(code: string): ContractDetail {
   const theta = -(0.01 + rng() * 0.06);
   const vega = 0.08 + rng() * 0.25;
   const leapCp = 0.5 + rng() * 12;
+
+  // Longbridge fields
+  const call_volume = Math.floor(10000 + rng() * 490000);
+  const put_volume = Math.floor(5000 + rng() * 195000);
+  const stock_change_pct = (rng() - 0.5) * 10;
+  const stock_price = strike * (1.5 + rng() * 0.5);
+  const pre_market_price = rng() > 0.3 ? stock_price * (0.99 + rng() * 0.02) : null;
+  const post_market_price = rng() > 0.3 ? stock_price * (0.98 + rng() * 0.04) : null;
 
   // Generate trades
   const numTrades = 10 + Math.floor(rng() * 15);
@@ -180,13 +217,19 @@ function generateMockDetail(code: string): ContractDetail {
     theta: Math.round(theta * 1000) / 1000,
     vega: Math.round(vega * 1000) / 1000,
     leap_cp_ratio: Math.round(leapCp * 100) / 100,
+    call_volume,
+    put_volume,
+    stock_change_pct: Math.round(stock_change_pct * 100) / 100,
+    stock_price: Math.round(stock_price * 100) / 100,
+    pre_market_price: pre_market_price ? Math.round(pre_market_price * 100) / 100 : null,
+    post_market_price: post_market_price ? Math.round(post_market_price * 100) / 100 : null,
     trades,
-    analysis: null, // signal analysis is injected only when a real signal is matched
+    analysis: null,
   };
 }
 
-/** Build signal-derived analysis from a matched ClassifiedSignal */
-function buildSignalAnalysis(signal: ClassifiedSignal): ContractDetail["analysis"] {
+/** Derive Analysis from ClassifiedSignal */
+function buildSignalAnalysis(signal: ClassifiedSignal): Analysis {
   const rng = seededRandom(signal.symbol + String(signal.strike));
   const isBullish = signal.option_type === "C";
   const repeatCount = Math.floor(3 + rng() * 15);
@@ -203,6 +246,7 @@ function buildSignalAnalysis(signal: ClassifiedSignal): ContractDetail["analysis
   };
 }
 
+/** Match contract code to ClassifiedSignal */
 function matchSignal(code: string, signals: ClassifiedSignal[]): ClassifiedSignal | null {
   const m = code.match(/^([A-Z]+)(\d{6})([CP])([\d.]+)$/);
   if (!m) return null;
@@ -217,6 +261,395 @@ function matchSignal(code: string, signals: ClassifiedSignal[]): ClassifiedSigna
     ) || null
   );
 }
+
+// ---------------------------------------------------------------------------
+// Components
+// ---------------------------------------------------------------------------
+
+function ScoreRing({ score }: { score: number }) {
+  const radius = 14;
+  const circumference = 2 * Math.PI * radius;
+  const pct = Math.min(Math.max(score, 0), 100) / 100;
+  const dashoffset = circumference * (1 - pct);
+
+  let color = "text-slate-400";
+  if (score >= 85) color = "text-emerald-400";
+  else if (score >= 70) color = "text-amber-400";
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: 36, height: 36 }}>
+      <svg width="36" height="36" className="-rotate-90">
+        <circle
+          cx="18"
+          cy="18"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          className="text-muted/30"
+        />
+        <circle
+          cx="18"
+          cy="18"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashoffset}
+          strokeLinecap="round"
+          className={color}
+        />
+      </svg>
+      <span className="absolute text-[9px] font-bold">{score}</span>
+    </div>
+  );
+}
+
+function AnomalyMetricsGrid({ detail }: { detail: ContractDetail }) {
+  const totalOptVolume = detail.call_volume + detail.put_volume;
+  const callPct = totalOptVolume > 0 ? (detail.call_volume / totalOptVolume) * 100 : 0;
+  const putPct = totalOptVolume > 0 ? (detail.put_volume / totalOptVolume) * 100 : 0;
+
+  const cpRatio = detail.put_volume > 0 ? detail.call_volume / detail.put_volume : detail.call_volume;
+
+  const avgBase = Math.max(detail.volume * 0.15, 1);
+  const vsAvg = detail.volume / avgBase;
+
+  let vsAvgColor = "text-slate-400";
+  if (vsAvg >= 10) vsAvgColor = "text-red-400";
+  else if (vsAvg >= 5) vsAvgColor = "text-orange-400";
+  else if (vsAvg >= 2) vsAvgColor = "text-yellow-400";
+
+  const stockUp = detail.stock_change_pct >= 0;
+
+  return (
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Card 1: Option Volume */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">Option Volume</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {totalOptVolume > 0 ? (
+            <>
+              <div className="text-2xl font-bold">{totalOptVolume.toLocaleString()}</div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+                <div className="h-full bg-emerald-400" style={{ width: `${callPct}%` }} />
+                <div className="h-full bg-rose-400" style={{ width: `${putPct}%` }} />
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-emerald-400">Call {callPct.toFixed(0)}%</span>
+                <span className="text-rose-400">Put {putPct.toFixed(0)}%</span>
+              </div>
+            </>
+          ) : (
+            <div className="text-sm text-muted-foreground">No data</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Card 2: Stock Change */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">Stock Change</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className={`text-2xl font-bold ${stockUp ? "text-emerald-400" : "text-rose-400"}`}>
+              {detail.stock_change_pct >= 0 ? "+" : ""}
+              {detail.stock_change_pct.toFixed(2)}%
+            </span>
+            {stockUp ? (
+              <ArrowUpRight className="h-5 w-5 text-emerald-400" />
+            ) : (
+              <ArrowDownRight className="h-5 w-5 text-rose-400" />
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground">Last: ${detail.stock_price.toFixed(2)}</div>
+          {detail.pre_market_price !== null && (
+            <div className="text-xs text-muted-foreground">
+              Pre: ${detail.pre_market_price.toFixed(2)}
+            </div>
+          )}
+          {detail.post_market_price !== null && (
+            <div className="text-xs text-muted-foreground">
+              Post: ${detail.post_market_price.toFixed(2)}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Card 3: C/P Ratio */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">Call/Put Ratio</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <div className="text-2xl font-bold">{cpRatio.toFixed(2)}</div>
+          <div className="text-xs text-muted-foreground">Call: {detail.call_volume.toLocaleString()}</div>
+          <div className="text-xs text-muted-foreground">Put: {detail.put_volume.toLocaleString()}</div>
+          {cpRatio > 2 && <div className="text-xs text-emerald-400">Bullish bias</div>}
+          {cpRatio < 0.5 && <div className="text-xs text-rose-400">Bearish bias</div>}
+          {cpRatio >= 0.5 && cpRatio <= 2 && <div className="text-xs text-slate-400">Neutral</div>}
+        </CardContent>
+      </Card>
+
+      {/* Card 4: vs Avg Volume */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm text-muted-foreground">vs Avg Volume</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <div className={`text-2xl font-bold ${vsAvgColor}`}>{vsAvg.toFixed(1)}x</div>
+          <div className="text-xs text-muted-foreground">{detail.volume.toLocaleString()} today</div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function GreeksBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const pct = Math.min(Math.abs(value) / max, 1);
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-mono font-medium">{value.toFixed(3)}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function GreeksSection({ detail }: { detail: ContractDetail }) {
+  const dte = Math.max(
+    0,
+    Math.ceil(
+      (new Date(detail.expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    )
+  );
+
+  return (
+    <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
+      <div className="space-y-4">
+        <GreeksBar label="Delta" value={detail.delta} max={1} color="bg-blue-400" />
+        <GreeksBar label="Gamma" value={detail.gamma} max={0.05} color="bg-purple-400" />
+        <GreeksBar label="Theta" value={detail.theta} max={0.1} color="bg-amber-400" />
+      </div>
+      <div className="space-y-4">
+        <GreeksBar label="Vega" value={detail.vega} max={0.3} color="bg-cyan-400" />
+        <GreeksBar label="IV" value={detail.iv} max={1} color="bg-emerald-400" />
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">DTE</span>
+            <span className="font-mono font-medium">{dte}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-slate-400"
+              style={{ width: `${Math.min(dte / 365, 1) * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SignalNarrativePanel({
+  signal,
+  analysis,
+}: {
+  signal: ClassifiedSignal;
+  analysis: Analysis;
+}) {
+  const tierColorMap: Record<string, string> = {
+    "🔴 conviction": "border-red-500/30 text-red-400 bg-red-500/10",
+    "🟠 strong": "border-orange-500/30 text-orange-400 bg-orange-500/10",
+    "🟡 moderate": "border-yellow-500/30 text-yellow-400 bg-yellow-500/10",
+  };
+
+  return (
+    <Card className="border-border bg-card">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <Zap className="h-5 w-5 text-purple-400" />
+          <span className="font-semibold">{signal.signal_type}</span>
+          <Badge variant="outline" className={tierColorMap[signal.tier] || "border-slate-500/30 text-slate-400 bg-slate-500/10"}>
+            {signal.tier}
+          </Badge>
+        </div>
+        <div className="rounded bg-muted/50 p-3 text-sm">{analysis.narrative}</div>
+        <div className="flex flex-wrap gap-2">
+          {signal.tags.map((tag, i) => (
+            <Badge key={i} variant="outline" className="text-xs">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NoSignalInfoBanner() {
+  return (
+    <div className="flex items-start gap-3 rounded border border-blue-500/30 bg-blue-500/5 p-4 text-sm">
+      <Info className="h-5 w-5 shrink-0 text-blue-400" />
+      <div>
+        <div className="font-bold text-blue-400">No Signal</div>
+        <div className="text-muted-foreground">
+          This contract is not currently flagged by the anomaly screener. Only basic contract info and trade records are shown.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlowAnalysis({ detail, analysis }: { detail: ContractDetail; analysis: Analysis }) {
+  const buyVolume = detail.trades
+    .filter((t) => t.side === "BUY")
+    .reduce((sum, t) => sum + t.volume, 0);
+  const sellVolume = detail.trades
+    .filter((t) => t.side === "SELL")
+    .reduce((sum, t) => sum + t.volume, 0);
+  const totalFlow = buyVolume + sellVolume;
+  const buyPct = totalFlow > 0 ? (buyVolume / totalFlow) * 100 : 0;
+  const sellPct = totalFlow > 0 ? (sellVolume / totalFlow) * 100 : 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 grid-cols-3">
+        <Card>
+          <CardContent className="p-4 text-center space-y-1">
+            <div className="text-xs text-muted-foreground">Repeat Trades</div>
+            <div className="text-2xl font-bold">{analysis.repeat_count}</div>
+            <div className="text-xs text-muted-foreground">trades</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center space-y-1">
+            <div className="text-xs text-muted-foreground">Above Ask</div>
+            <div className="text-2xl font-bold">{analysis.above_ask_count}</div>
+            <div className="text-xs text-muted-foreground">orders</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center space-y-1">
+            <div className="text-xs text-muted-foreground">Sweep</div>
+            <div className={`text-2xl font-bold ${analysis.sweep_detected ? "text-purple-400" : "text-slate-400"}`}>
+              {analysis.sweep_detected ? "Detected" : "None"}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {totalFlow > 0 && (
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs">
+            <span className="text-emerald-400">Buy {buyPct.toFixed(0)}%</span>
+            <span className="text-rose-400">Sell {sellPct.toFixed(0)}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+            <div className="h-full bg-emerald-400" style={{ width: `${buyPct}%` }} />
+            <div className="h-full bg-rose-400" style={{ width: `${sellPct}%` }} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TradeRecordsTable({ trades }: { trades: TradeRecord[] }) {
+  return (
+    <Card className="border-border bg-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <TrendingUp className="h-5 w-5 text-blue-400" />
+          Trade Records
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead>Time</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Volume</TableHead>
+                <TableHead>Side</TableHead>
+                <TableHead>Flags</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {trades.map((t, i) => (
+                <TableRow
+                  key={i}
+                  className={`border-border ${
+                    t.flags.includes("ABOVE_ASK") || t.flags.includes("SWEEP")
+                      ? "bg-red-500/5"
+                      : ""
+                  }`}
+                >
+                  <TableCell className="font-mono">{t.time}</TableCell>
+                  <TableCell className="font-mono">${t.price?.toFixed(2) ?? "-"}</TableCell>
+                  <TableCell className="font-mono">{t.volume?.toLocaleString() ?? "-"}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={
+                        t.side === "BUY"
+                          ? "border-emerald-500/30 text-emerald-400"
+                          : "border-rose-500/30 text-rose-400"
+                      }
+                    >
+                      {t.side === "BUY" ? "Buy" : "Sell"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {t.flags.includes("ABOVE_ASK") && (
+                        <Badge
+                          variant="outline"
+                          className="border-orange-500/30 text-orange-400 text-xs"
+                        >
+                          Above Ask
+                        </Badge>
+                      )}
+                      {t.flags.includes("SWEEP") && (
+                        <Badge
+                          variant="outline"
+                          className="border-purple-500/30 text-purple-400 text-xs"
+                        >
+                          Sweep
+                        </Badge>
+                      )}
+                      {t.flags.includes("ASK") && (
+                        <Badge
+                          variant="outline"
+                          className="border-blue-500/30 text-blue-400 text-xs"
+                        >
+                          Ask
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
 export default function SignalDetailPage() {
   const params = useParams();
@@ -241,17 +674,18 @@ export default function SignalDetailPage() {
       <div className="flex items-center gap-4">
         <Button variant="outline" size="sm" onClick={() => router.back()}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          返回
+          Back
         </Button>
+
+        {isSignal && analysis && <ScoreRing score={analysis.confidence} />}
+
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight font-mono">
-            {detail.code}
+            {detail.underlying} ${detail.strike} {detail.option_type === "C" ? "Call" : "Put"} {detail.expiration}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {detail.underlying} · ${detail.strike} · {detail.expiration} ·
-            {detail.option_type === "C" ? "Call" : "Put"}
-          </p>
+          <p className="text-sm text-muted-foreground font-mono">{detail.code}</p>
         </div>
+
         {isSignal && analysis && (
           <Badge
             variant="outline"
@@ -266,265 +700,59 @@ export default function SignalDetailPage() {
         )}
         {!isSignal && (
           <Badge variant="outline" className="border-slate-500/30 text-slate-400 bg-slate-500/10">
-            无信号
+            No Signal
           </Badge>
         )}
       </div>
 
-      {/* Price & Greeks */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">最新价</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">${detail.last_price.toFixed(2)}</div>
-            <div className="text-xs text-muted-foreground">
-              H: ${detail.high} / L: ${detail.low}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">成交量 / 持仓</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {detail.volume?.toLocaleString() ?? "-"}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              OI: {detail.open_interest?.toLocaleString() ?? "-"}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">IV</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              {(detail.iv * 100).toFixed(1)}%
-            </div>
-            <div className="text-xs text-muted-foreground">
-              LEAP C/P: {detail.leap_cp_ratio.toFixed(1)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Delta</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{detail.delta.toFixed(3)}</div>
-            <div className="text-xs text-muted-foreground">
-              Γ {detail.gamma.toFixed(4)} / θ {detail.theta.toFixed(4)} / ν{" "}
-              {detail.vega.toFixed(4)}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Anomaly Metrics Grid */}
+      <AnomalyMetricsGrid detail={detail} />
 
-      {/* Signal Info — only shown when this contract is an actual signal */}
-      {isSignal && signal && (
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-purple-400" />
-              交易信号
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Badge
-                variant="outline"
-                className={
-                  signal.tier === "🔴 conviction"
-                    ? "border-red-500/30 text-red-400 bg-red-500/10"
-                    : signal.tier === "🟠 strong"
-                    ? "border-orange-500/30 text-orange-400 bg-orange-500/10"
-                    : "border-yellow-500/30 text-yellow-400 bg-yellow-500/10"
-                }
-              >
-                {signal.tier}
-              </Badge>
-              <Badge variant="secondary">{signal.signal_type}</Badge>
-              <span className="text-sm text-muted-foreground">
-                Score: {signal.composite_score}
-              </span>
-            </div>
-            <div className="rounded border border-border bg-muted/50 p-3 text-sm">
-              {signal.narrative}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {signal.tags.map((tag, i) => (
-                <Badge key={i} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Signal Narrative or No-Signal Banner */}
+      {isSignal && signal && analysis && (
+        <SignalNarrativePanel signal={signal} analysis={analysis} />
       )}
+      {!isSignal && <NoSignalInfoBanner />}
 
-      {/* No-signal notice */}
-      {!isSignal && (
-        <div className="flex items-start gap-3 rounded border border-blue-500/30 bg-blue-500/5 p-4 text-sm">
-          <Info className="h-5 w-5 shrink-0 text-blue-400" />
-          <div>
-            <div className="font-bold text-blue-400">暂无交易信号</div>
-            <div className="text-muted-foreground">
-              该合约当前未通过异常检测筛选。以下仅展示基础合约信息和逐笔成交数据。
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Greeks */}
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-cyan-400" />
+            Greeks & IV
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <GreeksSection detail={detail} />
+        </CardContent>
+      </Card>
 
-      {/* Signal Analysis — only shown for actual signals */}
+      {/* Flow Analysis — only for signals */}
       {isSignal && analysis && (
         <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-orange-500" />
-              信号分析
+              Flow Analysis
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="rounded bg-muted p-3 text-center">
-                <div className="text-xs text-muted-foreground">重复成交</div>
-                <div className="text-2xl font-bold text-red-400">
-                  {analysis.repeat_count} 笔
-                </div>
-              </div>
-              <div className="rounded bg-muted p-3 text-center">
-                <div className="text-xs text-muted-foreground">高于 Ask</div>
-                <div className="text-2xl font-bold text-orange-400">
-                  {analysis.above_ask_count} 笔
-                </div>
-              </div>
-              <div className="rounded bg-muted p-3 text-center">
-                <div className="text-xs text-muted-foreground">Sweep 订单</div>
-                <div className="text-2xl font-bold text-purple-400">
-                  {analysis.sweep_detected ? "检测到" : "无"}
-                </div>
-              </div>
-              <div className="rounded bg-muted p-3 text-center">
-                <div className="text-xs text-muted-foreground">方向判定</div>
-                <div
-                  className={`text-2xl font-bold ${
-                    analysis.direction === "BULLISH"
-                      ? "text-emerald-400"
-                      : analysis.direction === "BEARISH"
-                      ? "text-rose-400"
-                      : "text-gray-400"
-                  }`}
-                >
-                  {analysis.direction === "BULLISH"
-                    ? "做多"
-                    : analysis.direction === "BEARISH"
-                    ? "做空"
-                    : "中性"}
-                </div>
-              </div>
-            </div>
-            <div className="rounded border border-border bg-muted/50 p-3 text-sm">
-              {analysis.narrative}
-            </div>
+          <CardContent>
+            <FlowAnalysis detail={detail} analysis={analysis} />
           </CardContent>
         </Card>
       )}
 
-      {/* Trade Records — shown for all contracts */}
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-blue-400" />
-            逐笔成交明细
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead>时间</TableHead>
-                  <TableHead>价格</TableHead>
-                  <TableHead>成交量</TableHead>
-                  <TableHead>方向</TableHead>
-                  <TableHead>标记</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {detail.trades.map((t, i) => (
-                  <TableRow
-                    key={i}
-                    className={`border-border ${
-                      t.flags.includes("ABOVE_ASK") || t.flags.includes("SWEEP")
-                        ? "bg-red-500/5"
-                        : ""
-                    }`}
-                  >
-                    <TableCell className="font-mono">{t.time}</TableCell>
-                    <TableCell className="font-mono">${t.price?.toFixed(2) ?? "-"}</TableCell>
-                    <TableCell className="font-mono">
-                      {t.volume?.toLocaleString() ?? "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          t.side === "BUY"
-                            ? "border-emerald-500/30 text-emerald-400"
-                            : "border-rose-500/30 text-rose-400"
-                        }
-                      >
-                        {t.side === "BUY" ? "Buy" : "Sell"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {t.flags.includes("ABOVE_ASK") && (
-                          <Badge
-                            variant="outline"
-                            className="border-orange-500/30 text-orange-400 text-xs"
-                          >
-                            高于Ask
-                          </Badge>
-                        )}
-                        {t.flags.includes("SWEEP") && (
-                          <Badge
-                            variant="outline"
-                            className="border-purple-500/30 text-purple-400 text-xs"
-                          >
-                            Sweep
-                          </Badge>
-                        )}
-                        {t.flags.includes("ASK") && (
-                          <Badge
-                            variant="outline"
-                            className="border-blue-500/30 text-blue-400 text-xs"
-                          >
-                            Ask
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Trade Records */}
+      <TradeRecordsTable trades={detail.trades} />
 
       {/* Disclaimer */}
       <div className="flex items-start gap-3 rounded border border-yellow-500/30 bg-yellow-500/5 p-4 text-sm text-yellow-400">
         <AlertTriangle className="h-5 w-5 shrink-0" />
         <div>
-          <div className="font-bold">免责声明</div>
+          <div className="font-bold">Disclaimer</div>
           <div className="text-muted-foreground">
-            以上数据仅供研究参考。实际交易需结合实时行情和个人判断。
-            {isSignal && " 信号分析基于模拟检测算法，不构成投资建议。"}
+            Data is for research purposes only. Actual trading requires real-time quotes and personal judgment.
+            {isSignal && " Signal analysis is based on simulated detection algorithms and does not constitute investment advice."}
           </div>
         </div>
       </div>
