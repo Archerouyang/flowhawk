@@ -46,7 +46,7 @@ function ChangeBadge({ pct }: { pct: number }) {
   return (
     <span
       className={`inline-flex items-center gap-0.5 text-xs font-medium ${
-        isUp ? "text-red-400" : "text-green-400"
+        isUp ? "text-emerald-400" : "text-rose-400"
       }`}
     >
       {isUp ? (
@@ -67,11 +67,11 @@ function ContractBadge({ type }: { type: string }) {
       variant="outline"
       className={`text-xs ${
         isCall
-          ? "border-red-500/30 text-red-400 bg-red-500/10"
-          : "border-green-500/30 text-green-400 bg-green-500/10"
+          ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+          : "border-rose-500/30 text-rose-400 bg-rose-500/10"
       }`}
     >
-      {isCall ? "认购" : "认沽"}
+      {isCall ? "Call" : "Put"}
     </Badge>
   );
 }
@@ -155,9 +155,9 @@ function RankingTable({
               </TableCell>
               <TableCell className="text-right font-mono">
                 {entry.leap_cp_ratio > 50 ? (
-                  <span className="text-red-400">{entry.leap_cp_ratio.toFixed(1)}</span>
+                  <span className="text-emerald-400">{entry.leap_cp_ratio.toFixed(1)}</span>
                 ) : entry.leap_cp_ratio > 2 ? (
-                  <span className="text-orange-400">{entry.leap_cp_ratio.toFixed(1)}</span>
+                  <span className="text-amber-400">{entry.leap_cp_ratio.toFixed(1)}</span>
                 ) : (
                   <span className="text-muted-foreground">{entry.leap_cp_ratio.toFixed(1)}</span>
                 )}
@@ -289,10 +289,10 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Call/Put 比
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-red-400" />
+            <TrendingUp className="h-4 w-4 text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-400">
+            <div className="text-3xl font-bold text-blue-400">
               {stats.call_put_ratio.toFixed(2)}
             </div>
           </CardContent>
@@ -330,8 +330,8 @@ export default function DashboardPage() {
                     variant="outline"
                     className={
                       sig.option_type === "C"
-                        ? "border-red-500/30 text-red-400 text-xs"
-                        : "border-green-500/30 text-green-400 text-xs"
+                        ? "border-emerald-500/30 text-emerald-400 text-xs"
+                        : "border-rose-500/30 text-rose-400 text-xs"
                     }
                   >
                     {sig.option_type}

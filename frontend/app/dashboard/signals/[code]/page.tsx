@@ -171,8 +171,8 @@ export default function SignalDetailPage() {
           variant="outline"
           className={
             a.direction === "BULLISH"
-              ? "border-red-500/30 text-red-400 bg-red-500/10"
-              : "border-green-500/30 text-green-400 bg-green-500/10"
+              ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+              : "border-rose-500/30 text-rose-400 bg-rose-500/10"
           }
         >
           {a.direction} {a.confidence}%
@@ -307,9 +307,9 @@ export default function SignalDetailPage() {
               <div
                 className={`text-2xl font-bold ${
                   a.direction === "BULLISH"
-                    ? "text-red-400"
+                    ? "text-emerald-400"
                     : a.direction === "BEARISH"
-                    ? "text-green-400"
+                    ? "text-rose-400"
                     : "text-gray-400"
                 }`}
               >
@@ -367,8 +367,8 @@ export default function SignalDetailPage() {
                         variant="outline"
                         className={
                           t.side === "BUY"
-                            ? "border-red-500/30 text-red-400"
-                            : "border-green-500/30 text-green-400"
+                            ? "border-emerald-500/30 text-emerald-400"
+                            : "border-rose-500/30 text-rose-400"
                         }
                       >
                         {t.side === "BUY" ? "买入" : "卖出"}
