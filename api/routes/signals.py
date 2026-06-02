@@ -69,7 +69,11 @@ def _build_tags(detected, stats: dict) -> list[str]:
     leap = stats.get("leap_ratio", 0)
     price_change = stats.get("price_change_day", 0)
 
-    signal_type = detected.signal_type.value if hasattr(detected.signal_type, "value") else str(detected.signal_type)
+    signal_type = (
+        detected.signal_type.value
+        if hasattr(detected.signal_type, "value")
+        else str(detected.signal_type)
+    )
 
     if signal_type == "smart_money":
         if leap > 10:
@@ -160,7 +164,8 @@ async def generate_signals(request: SignalRequest) -> SignalResponse:
                 implied_volatility=anom["implied_volatility"],
                 voi_ratio=anom["voi_ratio"],
                 leaps_score=round(detected.confidence, 3),
-                theta_price_ratio=abs(anom.get("theta", 0.0)) / (anom["last_price"] or 1e-9),
+                theta_price_ratio=abs(anom.get("theta", 0.0))
+                / (anom["last_price"] or 1e-9),
                 dte=dte_val,
                 signal_type=detected.signal_type.value,
                 composite_score=composite_score,
@@ -168,7 +173,9 @@ async def generate_signals(request: SignalRequest) -> SignalResponse:
                 narrative=detected.narrative,
                 tags=_build_tags(detected, stats),
                 asset_type="ETF" if (meta and meta.is_etf) else "STOCK",
-                cap_type=_cap_type_from_market_cap(meta.market_cap) if meta else "GROWTH",
+                cap_type=_cap_type_from_market_cap(meta.market_cap)
+                if meta
+                else "GROWTH",
                 sector=meta.sector if meta else "Unknown",
             )
         )
