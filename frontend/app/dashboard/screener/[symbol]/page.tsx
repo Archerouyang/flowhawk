@@ -51,43 +51,43 @@ interface ChainEntry {
 }
 
 function seededRandom(seed: number) {
-  const x = Math.sin(seed * 9301 + 49297) * 9301;
+  const x = Math.sin(seed * 9301 /* HARDCODED */ + 49297 /* HARDCODED */) * 9301; /* HARDCODED */
   return x - Math.floor(x);
 }
 
 function generateMockTrades(symbol: string): LargeTrade[] {
-  const count = 8 + Math.floor(seededRandom(symbol.charCodeAt(0)) * 12);
+  const count = 8 /* HARDCODED */ + Math.floor(seededRandom(symbol.charCodeAt(0)) * 12); /* HARDCODED */
   const trades: LargeTrade[] = [];
-  const types: LargeTrade["type"][] = ["Block", "Sweep", "Iceberg", "Above Ask"];
-  const exchanges = ["CBOE", "NYSE", "NASDAQ", "BATS", "ISE"];
-  const expiries = ["2026-06-20", "2026-07-18", "2026-08-15", "2026-09-19", "2026-12-18"];
-  const basePrice = 50 + seededRandom(symbol.charCodeAt(0)) * 500;
+  const types: LargeTrade["type"][] = ["Block" /* HARDCODED */, "Sweep" /* HARDCODED */, "Iceberg" /* HARDCODED */, "Above Ask" /* HARDCODED */];
+  const exchanges = ["CBOE" /* HARDCODED */, "NYSE" /* HARDCODED */, "NASDAQ" /* HARDCODED */, "BATS" /* HARDCODED */, "ISE" /* HARDCODED */];
+  const expiries = ["2026-06-20" /* HARDCODED */, "2026-07-18" /* HARDCODED */, "2026-08-15" /* HARDCODED */, "2026-09-19" /* HARDCODED */, "2026-12-18" /* HARDCODED */];
+  const basePrice = 50 /* HARDCODED */ + seededRandom(symbol.charCodeAt(0)) * 500; /* HARDCODED */
 
   for (let i = 0; i < count; i++) {
-    const seed = symbol.charCodeAt(0) * 100 + i * 17;
-    const isBuy = seededRandom(seed) > 0.35;
-    const size = 500 + Math.floor(seededRandom(seed + 1) * 4500);
-    const price = 1 + seededRandom(seed + 2) * 25;
-    const premium = (size * price * 100) / 1000000;
-    const hour = 9 + Math.floor(seededRandom(seed + 3) * 7);
-    const minute = Math.floor(seededRandom(seed + 4) * 60);
+    const seed = symbol.charCodeAt(0) * 100 /* HARDCODED */ + i * 17; /* HARDCODED */
+    const isBuy = seededRandom(seed) > 0.35; /* HARDCODED */
+    const size = 500 /* HARDCODED */ + Math.floor(seededRandom(seed + 1) * 4500); /* HARDCODED */
+    const price = 1 /* HARDCODED */ + seededRandom(seed + 2) * 25; /* HARDCODED */
+    const premium = (size * price * 100) /* HARDCODED */ / 1000000; /* HARDCODED */
+    const hour = 9 /* HARDCODED */ + Math.floor(seededRandom(seed + 3) * 7); /* HARDCODED */
+    const minute = Math.floor(seededRandom(seed + 4) * 60); /* HARDCODED */
     const typeIdx = Math.floor(seededRandom(seed + 5) * types.length);
 
-    const isCall = seededRandom(seed + 7) > 0.35;
-    const strike = Math.round(basePrice * (0.85 + seededRandom(seed + 8) * 0.3) / 5) * 5;
+    const isCall = seededRandom(seed + 7) > 0.35; /* HARDCODED */
+    const strike = Math.round(basePrice * (0.85 /* HARDCODED */ + seededRandom(seed + 8) * 0.3) /* HARDCODED */ / 5) /* HARDCODED */ * 5; /* HARDCODED */
     const expiry = expiries[Math.floor(seededRandom(seed + 9) * expiries.length)];
     const expShort = expiry.replace(/-/g, "").slice(2);
 
     trades.push({
-      time: `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`,
-      direction: isBuy ? "Buy" : "Sell",
+      time: `${hour.toString().padStart(2, "0") /* HARDCODED */}:${minute.toString().padStart(2, "0") /* HARDCODED */}`,
+      direction: isBuy ? "Buy" /* HARDCODED */ : "Sell" /* HARDCODED */,
       price: Number(price.toFixed(2)),
       size,
       premium: Number(premium.toFixed(2)),
       type: types[typeIdx],
       exchange: exchanges[Math.floor(seededRandom(seed + 6) * exchanges.length)],
-      contract_code: `${symbol}${expShort}${isCall ? "C" : "P"}${strike}`,
-      option_type: isCall ? "C" : "P",
+      contract_code: `${symbol}${expShort}${isCall ? "C" /* HARDCODED */ : "P" /* HARDCODED */}${strike}`,
+      option_type: isCall ? "C" /* HARDCODED */ : "P" /* HARDCODED */,
       strike,
       expiration: expiry,
     });
