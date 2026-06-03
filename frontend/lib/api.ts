@@ -41,6 +41,9 @@ export interface ScreenResponse {
 
 export type SignalType =
   | "smart_money"
+  | "sweep"
+  | "block"
+  | "dark_pool"
   | "first_timer"
   | "index_hedge"
   | "gamma_squeeze"
@@ -71,6 +74,10 @@ export interface ClassifiedSignal {
   asset_type: "STOCK" | "ETF";
   cap_type: "LARGE" | "GROWTH";
   sector: string;
+  timestamp?: string;
+  // IV context
+  iv_history?: number[];
+  iv_percentile?: number;
 }
 
 export interface SignalResponse {
@@ -152,7 +159,7 @@ function mockScreen(_screenParams: ScreenParams): ScreenResponse {
   };
 }
 
-const MOCK_CLASSIFIED_SIGNALS: ClassifiedSignal[] = [
+export const MOCK_CLASSIFIED_SIGNALS: ClassifiedSignal[] = [
   {
     symbol: "BSX",
     option_type: "C",
@@ -177,6 +184,9 @@ const MOCK_CLASSIFIED_SIGNALS: ClassifiedSignal[] = [
     asset_type: "STOCK",
     cap_type: "LARGE",
     sector: "Healthcare",
+    timestamp: "2026-06-03T09:42:00Z",
+    iv_history: [0.28, 0.29, 0.30, 0.31, 0.30, 0.31, 0.32, 0.33, 0.32, 0.32],
+    iv_percentile: 72,
   },
   {
     symbol: "SPCE",
@@ -202,6 +212,9 @@ const MOCK_CLASSIFIED_SIGNALS: ClassifiedSignal[] = [
     asset_type: "STOCK",
     cap_type: "GROWTH",
     sector: "Industrials",
+    timestamp: "2026-06-03T10:15:00Z",
+    iv_history: [0.38, 0.40, 0.42, 0.41, 0.43, 0.44, 0.45, 0.44, 0.45, 0.45],
+    iv_percentile: 88,
   },
   {
     symbol: "SMH",
@@ -227,6 +240,9 @@ const MOCK_CLASSIFIED_SIGNALS: ClassifiedSignal[] = [
     asset_type: "ETF",
     cap_type: "LARGE",
     sector: "Technology",
+    timestamp: "2026-06-03T09:58:00Z",
+    iv_history: [0.24, 0.25, 0.26, 0.27, 0.26, 0.27, 0.28, 0.27, 0.28, 0.28],
+    iv_percentile: 45,
   },
   {
     symbol: "ONDS",
@@ -252,6 +268,9 @@ const MOCK_CLASSIFIED_SIGNALS: ClassifiedSignal[] = [
     asset_type: "STOCK",
     cap_type: "GROWTH",
     sector: "Industrials",
+    timestamp: "2026-06-03T10:05:00Z",
+    iv_history: [0.48, 0.50, 0.52, 0.53, 0.54, 0.55, 0.55, 0.54, 0.55, 0.55],
+    iv_percentile: 95,
   },
   {
     symbol: "AAPL",
@@ -277,6 +296,9 @@ const MOCK_CLASSIFIED_SIGNALS: ClassifiedSignal[] = [
     asset_type: "STOCK",
     cap_type: "LARGE",
     sector: "Technology",
+    timestamp: "2026-06-03T09:30:00Z",
+    iv_history: [0.28, 0.29, 0.30, 0.31, 0.30, 0.31, 0.32, 0.31, 0.32, 0.32],
+    iv_percentile: 55,
   },
   {
     symbol: "TSLA",
@@ -302,6 +324,122 @@ const MOCK_CLASSIFIED_SIGNALS: ClassifiedSignal[] = [
     asset_type: "STOCK",
     cap_type: "LARGE",
     sector: "Consumer Discretionary",
+    timestamp: "2026-06-03T10:22:00Z",
+    iv_history: [0.40, 0.41, 0.42, 0.43, 0.44, 0.44, 0.45, 0.44, 0.45, 0.45],
+    iv_percentile: 82,
+  },
+  // ── New signal types: sweep, block, dark_pool ──
+  {
+    symbol: "NVDA",
+    option_type: "C",
+    strike: 130,
+    expiration: "2027-01-15",
+    last_price: 22.0,
+    delta: 0.75,
+    gamma: 0.015,
+    theta: -0.038,
+    vega: 0.25,
+    implied_volatility: 0.38,
+    voi_ratio: 3.8,
+    leaps_score: 0.88,
+    theta_price_ratio: 0.0017,
+    dte: 228,
+    signal_type: "sweep",
+    composite_score: 91,
+    tier: "🔴 conviction",
+    narrative:
+      "NVDA 多交易所扫单——3 分钟内 12 笔 sweep order 合计 $2.1M，方向一致做多。急迫性极强。",
+    tags: ["Sweep cluster", "Multi-exchange", "$2M+ premium"],
+    asset_type: "STOCK",
+    cap_type: "LARGE",
+    sector: "Technology",
+    timestamp: "2026-06-03T10:35:00Z",
+    iv_history: [0.32, 0.33, 0.34, 0.35, 0.34, 0.35, 0.36, 0.37, 0.38, 0.38],
+    iv_percentile: 78,
+  },
+  {
+    symbol: "META",
+    option_type: "C",
+    strike: 580,
+    expiration: "2026-12-18",
+    last_price: 32.0,
+    delta: 0.62,
+    gamma: 0.011,
+    theta: -0.040,
+    vega: 0.20,
+    implied_volatility: 0.30,
+    voi_ratio: 4.2,
+    leaps_score: 0.82,
+    theta_price_ratio: 0.0013,
+    dte: 203,
+    signal_type: "block",
+    composite_score: 88,
+    tier: "🔴 conviction",
+    narrative:
+      "META 580c 单笔 $890K block trade——暗池成交，机构在 580 行权价建立大额远月 call 仓位。",
+    tags: ["Block $800K+", "Dark pool print", "Institutional build"],
+    asset_type: "STOCK",
+    cap_type: "LARGE",
+    sector: "Communication Services",
+    timestamp: "2026-06-03T10:18:00Z",
+    iv_history: [0.26, 0.27, 0.28, 0.29, 0.28, 0.29, 0.30, 0.30, 0.30, 0.30],
+    iv_percentile: 62,
+  },
+  {
+    symbol: "AMD",
+    option_type: "P",
+    strike: 155,
+    expiration: "2026-10-17",
+    last_price: 8.50,
+    delta: -0.38,
+    gamma: 0.012,
+    theta: -0.042,
+    vega: 0.22,
+    implied_volatility: 0.42,
+    voi_ratio: 2.8,
+    leaps_score: 0.78,
+    theta_price_ratio: 0.0049,
+    dte: 137,
+    signal_type: "dark_pool",
+    composite_score: 76,
+    tier: "🟠 strong",
+    narrative:
+      "AMD 155p 暗池 $1.2M 成交——不在公开订单簿显示，隐藏卖压。芯片板块尾部风险对冲。",
+    tags: ["Dark pool $1M+", "Hidden flow", "Sector hedge"],
+    asset_type: "STOCK",
+    cap_type: "LARGE",
+    sector: "Technology",
+    timestamp: "2026-06-03T09:55:00Z",
+    iv_history: [0.36, 0.37, 0.38, 0.39, 0.40, 0.41, 0.42, 0.41, 0.42, 0.42],
+    iv_percentile: 85,
+  },
+  {
+    symbol: "ARKK",
+    option_type: "C",
+    strike: 50,
+    expiration: "2026-08-15",
+    last_price: 3.80,
+    delta: 0.55,
+    gamma: 0.012,
+    theta: -0.035,
+    vega: 0.28,
+    implied_volatility: 0.42,
+    voi_ratio: 12.3,
+    leaps_score: 0.85,
+    theta_price_ratio: 0.0092,
+    dte: 74,
+    signal_type: "sector_rotation",
+    composite_score: 79,
+    tier: "🟠 strong",
+    narrative:
+      "ARKK 创新 ETF call  surge——板块级别的资金轮动信号，成长股资金回流。",
+    tags: ["Sector rotation", "Growth inflow", "ETF flow"],
+    asset_type: "ETF",
+    cap_type: "GROWTH",
+    sector: "Technology",
+    timestamp: "2026-06-03T10:08:00Z",
+    iv_history: [0.36, 0.37, 0.38, 0.39, 0.40, 0.41, 0.42, 0.41, 0.42, 0.42],
+    iv_percentile: 90,
   },
 ];
 
@@ -490,19 +628,47 @@ const MOCK_DRAGON_TIGER: ContractEntry[] = [
   makeContract(23, "HD", false, "HD260815C380", 380, "2026-08-15", "C", 7.80, 8.60, 7.10, 3.5, 7.60, 8.00, 10200, 4.2, 7.96, 4800, 380, 0.20, 2.1, 0.50, 0.010, -0.040, 0.18, "📈 4.2x volume | Home improvement calls — housing data pending"),
   makeContract(24, "CRM", false, "CRM260815C315", 315, "2026-08-15", "C", 9.50, 10.80, 8.60, 8.2, 9.30, 9.70, 9800, 6.5, 9.31, 5600, 1100, 0.30, 5.2, 0.62, 0.012, -0.048, 0.23, "⚡ 6.5x volume | Salesforce AI monetization driving call demand"),
   makeContract(25, "PFE", false, "PFE260815C32", 32, "2026-08-15", "C", 1.20, 1.40, 1.10, 2.8, 1.18, 1.22, 9500, 3.5, 1.14, 18200, 300, 0.24, 1.8, 0.55, 0.015, -0.028, 0.13, "📈 3.5x volume | Pharma value play — deep OTM call accumulation"),
+  // ── 新增个股（18→25 补全） ──
+  makeContract(26, "GOOGL", false, "GOOGL260815C170", 170, "2026-08-15", "C", 8.20, 9.50, 7.50, 3.8, 8.00, 8.40, 9200, 4.2, 7.54, 11200, 650, 0.28, 2.5, 0.58, 0.011, -0.042, 0.20, "📈 4.2x volume | Alphabet AI search monetization call accumulation"),
+  makeContract(27, "AMZN", false, "AMZN260815C200", 200, "2026-08-15", "C", 12.50, 14.00, 11.50, 4.5, 12.20, 12.80, 8800, 5.1, 11.00, 9800, 520, 0.30, 3.2, 0.60, 0.012, -0.045, 0.21, "⚡ 5.1x volume | Amazon AWS growth narrative driving call demand"),
+  makeContract(28, "DIS", false, "DIS260815C110", 110, "2026-08-15", "C", 4.20, 4.80, 3.80, 3.2, 4.10, 4.30, 8400, 4.5, 3.53, 7200, 380, 0.26, 2.1, 0.52, 0.010, -0.038, 0.18, "📈 4.5x volume | Disney streaming + parks recovery call positioning"),
+  makeContract(29, "NKE", false, "NKE260815C100", 100, "2026-08-15", "C", 5.50, 6.20, 5.00, 2.8, 5.40, 5.60, 8100, 3.8, 4.46, 6500, 290, 0.24, 1.8, 0.50, 0.009, -0.035, 0.17, "📈 3.8x volume | Nike consumer recovery — brand strength call bets"),
+  makeContract(30, "INTC", false, "INTC260815C25", 25, "2026-08-15", "C", 2.80, 3.20, 2.50, 5.5, 2.70, 2.90, 7800, 6.2, 2.18, 8900, 420, 0.32, 3.5, 0.55, 0.014, -0.040, 0.19, "⚡ 6.2x volume | Intel turnaround play — deep value call accumulation"),
+  makeContract(31, "PYPL", false, "PYPL260815C70", 70, "2026-08-15", "C", 3.50, 4.00, 3.10, 4.2, 3.40, 3.60, 7500, 5.5, 2.63, 5800, 350, 0.35, 2.8, 0.52, 0.013, -0.042, 0.20, "⚡ 5.5x volume | PayPal fintech recovery — oversold bounce calls"),
+  makeContract(32, "UBER", false, "UBER260815C80", 80, "2026-08-15", "C", 6.20, 7.00, 5.60, 6.8, 6.10, 6.30, 7200, 7.1, 4.46, 6200, 480, 0.38, 4.2, 0.58, 0.015, -0.048, 0.22, "🔥 7.1x volume | Uber mobility + delivery dual growth call buildup"),
+  // ── 新增 ETF（7→25 补全） ──
+  makeContract(33, "ARKK", true, "ARKK260815C50", 50, "2026-08-15", "C", 3.80, 4.50, 3.30, 8.5, 3.70, 3.90, 14200, 12.3, 5.40, 18500, 1200, 0.42, 6.8, 0.55, 0.012, -0.055, 0.28, "🔥 12.3x volume | ARKK innovation ETF call surge — Cathie Wood momentum"),
+  makeContract(34, "TLT", true, "TLT260815P95", 95, "2026-08-15", "P", 2.50, 3.00, 2.10, 5.2, 2.40, 2.60, 13800, 8.5, 3.45, 22100, 1800, 0.28, 4.2, -0.35, 0.008, -0.058, 0.32, "🔥 8.5x volume | Treasury bond put hedge — rate cut expectation positioning"),
+  makeContract(35, "GLD", true, "GLD260815C220", 220, "2026-08-15", "C", 4.20, 4.80, 3.80, 3.2, 4.10, 4.30, 13200, 5.1, 5.54, 15600, 850, 0.22, 2.5, 0.48, 0.009, -0.042, 0.24, "⚡ 5.1x volume | Gold ETF call flow — inflation hedge demand"),
+  makeContract(36, "VOO", true, "VOO260815C500", 500, "2026-08-15", "C", 5.50, 6.10, 5.00, 2.1, 5.40, 5.60, 12800, 3.8, 7.04, 14200, 520, 0.18, 1.5, 0.52, 0.008, -0.038, 0.22, "📈 3.8x volume | S&P 500 core ETF call accumulation — passive inflows"),
+  makeContract(37, "XLU", true, "XLU260815C70", 70, "2026-08-15", "C", 1.85, 2.10, 1.65, 2.8, 1.80, 1.90, 12500, 4.2, 2.31, 16800, 480, 0.20, 1.8, 0.50, 0.011, -0.032, 0.15, "📈 4.2x volume | Utilities defensive rotation — rate-sensitive sector calls"),
+  makeContract(38, "XLI", true, "XLI260815C120", 120, "2026-08-15", "C", 2.80, 3.20, 2.50, 3.5, 2.70, 2.90, 12200, 4.8, 3.42, 13200, 420, 0.24, 2.1, 0.52, 0.010, -0.040, 0.18, "📈 4.8x volume | Industrials ETF call flow — infrastructure bill plays"),
+  makeContract(39, "XLP", true, "XLP260815C75", 75, "2026-08-15", "C", 2.10, 2.40, 1.90, 2.1, 2.05, 2.15, 11800, 3.5, 2.48, 11500, 380, 0.18, 1.2, 0.48, 0.009, -0.035, 0.16, "📈 3.5x volume | Consumer staples ETF calls — recession hedge positioning"),
+  makeContract(40, "XLB", true, "XLB260815C85", 85, "2026-08-15", "C", 3.20, 3.60, 2.90, 4.2, 3.10, 3.30, 11500, 5.5, 3.68, 9800, 520, 0.26, 2.8, 0.54, 0.012, -0.042, 0.19, "⚡ 5.5x volume | Materials sector rotation — commodity supercycle calls"),
+  makeContract(41, "KRE", true, "KRE260815C55", 55, "2026-08-15", "C", 1.95, 2.20, 1.75, 3.2, 1.90, 2.00, 11200, 6.2, 2.18, 14200, 650, 0.28, 3.2, 0.52, 0.013, -0.038, 0.17, "⚡ 6.2x volume | Regional banks ETF call surge — rate cut beta play"),
+  makeContract(42, "IBB", true, "IBB260815C140", 140, "2026-08-15", "C", 5.80, 6.50, 5.20, 3.8, 5.70, 5.90, 10800, 4.5, 6.26, 8500, 480, 0.24, 2.1, 0.50, 0.010, -0.040, 0.20, "📈 4.5x volume | Biotech ETF call accumulation — M&A speculation pipeline"),
+  makeContract(43, "SOXL", true, "SOXL260815C35", 35, "2026-08-15", "C", 8.50, 10.20, 7.20, 12.5, 8.20, 8.80, 10500, 15.2, 8.93, 9800, 1100, 0.55, 8.2, 0.62, 0.018, -0.062, 0.30, "🔥 15.2x volume | 3x Semiconductor leverage ETF — gamma squeeze on SOXL calls"),
+  makeContract(44, "VXX", true, "VXX260815C15", 15, "2026-08-15", "C", 2.20, 2.60, 1.90, 8.5, 2.10, 2.30, 10200, 9.8, 2.24, 18500, 950, 0.45, 5.5, 0.48, 0.014, -0.055, 0.28, "🔥 9.8x volume | VIX futures ETF call spike — tail risk hedging demand"),
+  makeContract(45, "EEM", true, "EEM260815C45", 45, "2026-08-15", "C", 1.50, 1.75, 1.30, 2.8, 1.45, 1.55, 9800, 4.2, 1.47, 11200, 380, 0.22, 1.8, 0.50, 0.010, -0.032, 0.16, "📈 4.2x volume | Emerging markets ETF call flow — China reopening narrative"),
+  makeContract(46, "USO", true, "USO260815C80", 80, "2026-08-15", "C", 3.50, 4.00, 3.10, 4.5, 3.40, 3.60, 9500, 6.5, 3.33, 10200, 520, 0.30, 3.2, 0.55, 0.012, -0.042, 0.20, "⚡ 6.5x volume | Oil ETF call accumulation — supply tightness bets"),
+  makeContract(47, "SCHD", true, "SCHD260815C25", 25, "2026-08-15", "C", 1.20, 1.35, 1.10, 1.8, 1.18, 1.22, 9200, 3.5, 1.10, 12800, 280, 0.16, 1.2, 0.48, 0.008, -0.028, 0.14, "📈 3.5x volume | Dividend aristocrats ETF calls — income + growth dual play"),
+  makeContract(48, "JEPI", true, "JEPI260815C55", 55, "2026-08-15", "C", 2.80, 3.10, 2.60, 2.1, 2.75, 2.85, 8800, 4.1, 2.46, 9800, 350, 0.18, 1.5, 0.50, 0.009, -0.030, 0.15, "📈 4.1x volume | Covered call ETF call flow — volatility harvesting demand"),
+  makeContract(49, "XLRE", true, "XLRE260815C40", 40, "2026-08-15", "C", 1.85, 2.10, 1.65, 3.2, 1.80, 1.90, 8500, 5.2, 1.57, 7200, 320, 0.24, 2.1, 0.52, 0.011, -0.035, 0.17, "⚡ 5.2x volume | Real estate ETF calls — rate-sensitive sector positioning"),
+  makeContract(50, "TQQQ", true, "TQQQ260815C55", 55, "2026-08-15", "C", 6.50, 7.50, 5.80, 10.2, 6.30, 6.70, 8200, 18.5, 5.33, 11200, 850, 0.52, 8.2, 0.58, 0.016, -0.058, 0.32, "🔥 18.5x volume | 3x Nasdaq leverage ETF — extreme call gamma squeeze"),
 ];
 
-const MOCK_INDIVIDUAL: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => !e.is_etf).slice(0, 25);
-const MOCK_ETF_NEW: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => e.is_etf).slice(0, 25);
+const MOCK_DRAGON_TIGER_TOP25: ContractEntry[] = MOCK_DRAGON_TIGER.slice(0, 25);
+const MOCK_INDIVIDUAL: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => !e.is_etf).slice(0, 25).map((e, i) => ({ ...e, rank: i + 1 }));
+const MOCK_ETF_NEW: ContractEntry[] = MOCK_DRAGON_TIGER.filter(e => e.is_etf).slice(0, 25).map((e, i) => ({ ...e, rank: i + 1 }));
 const MOCK_PREMIUM: ContractEntry[] = [...MOCK_DRAGON_TIGER].sort((a, b) => b.volume.premium - a.volume.premium).slice(0, 25).map((e, i) => ({ ...e, rank: i + 1 }));
 
 function mockContractRanking(category: string): ContractRankingResponse {
   const map: Record<string, ContractEntry[]> = {
-    dragon_tiger: MOCK_DRAGON_TIGER,
+    dragon_tiger: MOCK_DRAGON_TIGER_TOP25,
     individual: MOCK_INDIVIDUAL,
     etf: MOCK_ETF_NEW,
   };
-  const entries = map[category] || MOCK_DRAGON_TIGER;
+  const entries = map[category] || MOCK_DRAGON_TIGER_TOP25;
   return { date: new Date().toISOString().split("T")[0], category, total: entries.length, rankings: entries };
 }
 
@@ -513,7 +679,7 @@ function mockContractStats(): ContractDashboardStats {
     total_volume: 2340500,
     total_premium: 324.5,
     call_put_ratio: 2.04,
-    dragon_tiger: MOCK_DRAGON_TIGER,
+    dragon_tiger: MOCK_DRAGON_TIGER_TOP25,
     individual: MOCK_INDIVIDUAL,
     etf: MOCK_ETF_NEW,
     premium: MOCK_PREMIUM,
@@ -528,4 +694,36 @@ export async function getContractRanking(category: string = "dragon_tiger"): Pro
 export async function getContractStats(): Promise<ContractDashboardStats> {
   if (USE_MOCK) return mockContractStats();
   return get<ContractDashboardStats>("/dashboard");
+}
+
+/* ─── Historical Rankings ─── */
+
+export interface HistoricalRankingResponse {
+  date: string;
+  category: string;
+  total: number;
+  rankings: ContractEntry[];
+}
+
+export interface RankingDatesResponse {
+  dates: string[];
+}
+
+export async function getHistoricalRanking(
+  snapshotDate: string,
+  category: string = "dragon_tiger",
+): Promise<HistoricalRankingResponse> {
+  if (USE_MOCK) {
+    // In mock mode, always return today's data regardless of date
+    return mockContractRanking(category) as unknown as HistoricalRankingResponse;
+  }
+  return get<HistoricalRankingResponse>(`/rankings/history/${snapshotDate}?category=${category}`);
+}
+
+export async function getRankingDates(): Promise<RankingDatesResponse> {
+  if (USE_MOCK) {
+    const today = new Date().toISOString().split("T")[0];
+    return { dates: [today] };
+  }
+  return get<RankingDatesResponse>("/rankings/history");
 }

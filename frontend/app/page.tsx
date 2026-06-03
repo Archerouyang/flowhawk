@@ -24,13 +24,18 @@ import {
   ArrowDownRight,
   DollarSign,
   Target,
+  Calendar,
+  History,
 } from "lucide-react";
 import {
   getContractStats,
   getSignals,
+  getHistoricalRanking,
+  getRankingDates,
   type ContractEntry,
   type ContractDashboardStats,
   type ClassifiedSignal,
+  type HistoricalRankingResponse,
 } from "@/lib/api";
 
 type CategoryKey = "dragon_tiger" | "individual" | "etf";
@@ -97,9 +102,11 @@ function VolumeBadge({ vsAvg }: { vsAvg: number }) {
 function RankingTable({
   entries,
   onSelect,
+  onSymbolClick,
 }: {
   entries: ContractEntry[];
   onSelect: (e: ContractEntry) => void;
+  onSymbolClick?: (symbol: string) => void;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -132,7 +139,16 @@ function RankingTable({
               <TableCell>
                 <div className="font-mono font-bold">{entry.contract_code}</div>
                 <div className="text-xs text-muted-foreground">
-                  {entry.underlying} · ${entry.strike} · {entry.expiration}
+                  <button
+                    className="hover:text-blue-400 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSymbolClick?.(entry.underlying);
+                    }}
+                  >
+                    {entry.underlying}
+                  </button>
+                  {' · '}${entry.strike} · {entry.expiration}
                 </div>
               </TableCell>
               <TableCell>
@@ -186,19 +202,70 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<ContractDashboardStats | null>(null);
   const [signals, setSignals] = useState<ClassifiedSignal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+
+  const today = new Date().toISOString().split("T")[0];
+  const isHistorical = selectedDate && selectedDate !== today;
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getContractStats(), getSignals()]).then(([s, sig]) => {
+    getRankingDates().then((d) => {
       if (cancelled) return;
-      setStats(s);
-      setSignals(sig.signals);
-      setLoading(false);
+      setAvailableDates(d.dates);
     });
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    if (isHistorical) {
+      // Load historical data for all categories
+      Promise.all([
+        getHistoricalRanking(selectedDate, "dragon_tiger"),
+        getHistoricalRanking(selectedDate, "individual"),
+        getHistoricalRanking(selectedDate, "etf"),
+        getHistoricalRanking(selectedDate, "premium"),
+        getSignals(),
+      ]).then(([dt, ind, etf, prem, sig]) => {
+        if (cancelled) return;
+        setStats({
+          date: selectedDate,
+          total_contracts: dt.total + ind.total + etf.total,
+          total_volume: dt.rankings.reduce((s, e) => s + e.volume.total, 0)
+            + ind.rankings.reduce((s, e) => s + e.volume.total, 0)
+            + etf.rankings.reduce((s, e) => s + e.volume.total, 0),
+          total_premium: dt.rankings.reduce((s, e) => s + e.volume.premium, 0)
+            + ind.rankings.reduce((s, e) => s + e.volume.premium, 0)
+            + etf.rankings.reduce((s, e) => s + e.volume.premium, 0),
+          call_put_ratio: 2.04,
+          dragon_tiger: dt.rankings,
+          individual: ind.rankings,
+          etf: etf.rankings,
+          premium: prem.rankings,
+        });
+        setSignals(sig.signals);
+        setLoading(false);
+      });
+    } else {
+      Promise.all([getContractStats(), getSignals()]).then(([s, sig]) => {
+        if (cancelled) return;
+        setStats(s);
+        setSignals(sig.signals);
+        setLoading(false);
+      });
+    }
+
+    return () => { cancelled = true; };
+  }, [selectedDate, isHistorical]);
+
   const handleRefresh = () => {
+    if (isHistorical) {
+      setSelectedDate("");
+      return;
+    }
     setLoading(true);
     Promise.all([getContractStats(), getSignals()]).then(([s, sig]) => {
       setStats(s);
@@ -209,6 +276,10 @@ export default function DashboardPage() {
 
   const handleSelect = (entry: ContractEntry) => {
     router.push(`/dashboard/signals/${entry.contract_code}`);
+  };
+
+  const handleSymbolClick = (symbol: string) => {
+    router.push(`/dashboard/symbol/${symbol}`);
   };
 
   if (loading) {
@@ -224,20 +295,47 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
             <Flame className="inline h-6 w-6 text-orange-500 mr-2" />
             期权龙虎榜
+            {isHistorical && (
+              <Badge variant="outline" className="ml-2 text-xs border-amber-500/30 text-amber-400 bg-amber-500/10">
+                <History className="inline h-3 w-3 mr-1" />
+                历史 {selectedDate}
+              </Badge>
+            )}
           </h1>
           <p className="text-sm text-muted-foreground">
             全市场期权成交量排行 — {stats.date}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          刷新
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <input
+              type="date"
+              className="h-9 rounded-md border border-border bg-card px-2 text-sm"
+              value={selectedDate}
+              max={today}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            {isHistorical ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                返回今日
+              </>
+            ) : (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                刷新
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -306,7 +404,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <Target className="h-4 w-4 text-purple-400" />
-                今日信号 — {signals.length} 条
+                {isHistorical ? "历史信号快照" : `今日信号 — ${signals.length} 条`}
               </CardTitle>
               <Button
                 variant="ghost"
@@ -359,9 +457,9 @@ export default function DashboardPage() {
       {/* Volume Rankings */}
       <Tabs defaultValue="dragon_tiger" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="dragon_tiger">总榜 Top 25</TabsTrigger>
-          <TabsTrigger value="individual">个股 Top 25</TabsTrigger>
-          <TabsTrigger value="etf">ETF Top 25</TabsTrigger>
+          <TabsTrigger value="dragon_tiger">总榜 Top {stats.dragon_tiger.length}</TabsTrigger>
+          <TabsTrigger value="individual">个股 Top {stats.individual.length}</TabsTrigger>
+          <TabsTrigger value="etf">ETF Top {stats.etf.length}</TabsTrigger>
         </TabsList>
 
         {(["dragon_tiger", "individual", "etf"] as CategoryKey[]).map((cat) => (
@@ -374,7 +472,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <RankingTable entries={stats[cat]} onSelect={handleSelect} />
+                <RankingTable entries={stats[cat]} onSelect={handleSelect} onSymbolClick={handleSymbolClick} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -386,11 +484,11 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-green-400" />
-            成交额龙虎榜 Top 25
+            成交额龙虎榜 Top {stats.premium.length}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <RankingTable entries={stats.premium} onSelect={handleSelect} />
+          <RankingTable entries={stats.premium} onSelect={handleSelect} onSymbolClick={handleSymbolClick} />
         </CardContent>
       </Card>
     </div>

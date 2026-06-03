@@ -7,6 +7,11 @@ from pydantic import BaseModel
 
 from src.data_sources.mock import generate_options_snapshot, generate_symbol_meta
 from src.ranking import generate_contract_rankings
+from src.storage.db import (
+    get_ranking_by_date,
+    save_ranking_snapshot,
+    get_available_ranking_dates,
+)
 
 router = APIRouter()
 
@@ -242,4 +247,154 @@ def _convert_entry(e) -> ContractEntry | None:
         ),
         leap_cp_ratio=e.leap_cp_ratio,
         narrative=e.narrative,
+    )
+
+
+def _entry_to_dict(e: ContractEntry) -> dict:
+    """Convert Pydantic ContractEntry to flat dict for DB storage."""
+    return {
+        "rank": e.rank,
+        "contract_code": e.contract_code,
+        "underlying": e.underlying,
+        "option_type": e.option_type,
+        "strike": e.strike,
+        "expiration": e.expiration,
+        "last_price": e.price.last,
+        "change_pct": e.price.change_pct,
+        "volume": e.volume.total,
+        "vs_avg": e.volume.vs_avg,
+        "premium": e.volume.premium,
+        "oi_total": e.oi.total,
+        "oi_change": e.oi.change,
+        "iv": e.iv.current,
+        "iv_change_pct": e.iv.change_pct,
+        "delta": e.greeks.delta,
+        "gamma": e.greeks.gamma,
+        "theta": e.greeks.theta,
+        "vega": e.greeks.vega,
+        "leap_cp_ratio": e.leap_cp_ratio,
+        "narrative": e.narrative,
+        "is_etf": e.is_etf,
+    }
+
+
+class HistoryRequest(BaseModel):
+    """Request to fetch historical rankings."""
+
+    category: str = "dragon_tiger"
+
+
+class HistoryDateResponse(BaseModel):
+    """Response for available ranking dates."""
+
+    dates: list[str]
+
+
+@router.get("/rankings/history", response_model=HistoryDateResponse)
+async def get_ranking_dates() -> HistoryDateResponse:
+    """Get all available ranking snapshot dates."""
+    dates = get_available_ranking_dates()
+    return HistoryDateResponse(dates=dates)
+
+
+@router.get("/rankings/history/{snapshot_date}", response_model=RankingResponse)
+async def get_historical_ranking(
+    snapshot_date: str, category: str = "dragon_tiger"
+) -> RankingResponse:
+    """Get ranking snapshot for a specific date."""
+    rows = get_ranking_by_date(snapshot_date, category)
+    if not rows:
+        # Fallback to today's live data if no history found
+        return await get_ranking(RankingRequest(category=category))
+
+    entries = [_row_to_entry(r) for r in rows]
+    return RankingResponse(
+        date=snapshot_date,
+        category=category,
+        total=len(entries),
+        rankings=entries,
+    )
+
+
+@router.post("/rankings/snapshot")
+async def create_snapshot() -> dict:
+    """Manually trigger a snapshot save for today. Returns saved categories."""
+    snapshot_date = date.today().isoformat()
+    symbols = [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "META",
+        "NVDA",
+        "TSLA",
+        "AMD",
+        "AVGO",
+        "AMZN",
+        "SPCE",
+        "ONDS",
+        "PLTR",
+        "SOFI",
+        "MSTR",
+        "RIOT",
+        "SPY",
+        "QQQ",
+        "SMH",
+        "XLF",
+        "XLE",
+    ]
+    snapshot = generate_options_snapshot(
+        symbols, date.today(), num_contracts_per_symbol=30
+    )
+    meta_map = generate_symbol_meta(symbols)
+    rankings = generate_contract_rankings(snapshot, meta_map)
+
+    saved = []
+    for cat, entries in rankings.items():
+        pydantic_entries = _convert_entries(entries)
+        dict_entries = [_entry_to_dict(e) for e in pydantic_entries]
+        save_ranking_snapshot(snapshot_date, cat, dict_entries)
+        saved.append(cat)
+
+    return {"date": snapshot_date, "saved_categories": saved}
+
+
+def _row_to_entry(row: dict) -> ContractEntry:
+    """Convert DB row to ContractEntry Pydantic model."""
+    return ContractEntry(
+        rank=row["rank"],
+        underlying=row["underlying"],
+        is_etf=bool(row["is_etf"]),
+        contract_code=row["contract_code"],
+        strike=row["strike"],
+        expiration=row["expiration"],
+        option_type=row["option_type"],
+        price=PriceData(
+            last=row["last_price"],
+            high=row["last_price"],  # Not stored separately
+            low=row["last_price"],
+            change_pct=row["change_pct"],
+            bid=row["last_price"] * 0.99,
+            ask=row["last_price"] * 1.01,
+        ),
+        volume=VolumeData(
+            total=row["volume"],
+            vs_avg=row["vs_avg"],
+            premium=row["premium"],
+        ),
+        oi=OIData(
+            total=row["oi_total"],
+            change=row["oi_change"],
+        ),
+        iv=IVData(
+            current=row["iv"],
+            change_pct=row["iv_change_pct"],
+        ),
+        greeks=GreeksData(
+            delta=row["delta"],
+            gamma=row["gamma"],
+            theta=row["theta"],
+            vega=row["vega"],
+        ),
+        leap_cp_ratio=row["leap_cp_ratio"],
+        narrative=row["narrative"] or "",
     )

@@ -86,6 +86,40 @@ CREATE INDEX IF NOT EXISTS idx_signals_symbol   ON signals(symbol);
 CREATE INDEX IF NOT EXISTS idx_signals_type     ON signals(signal_type);
 CREATE INDEX IF NOT EXISTS idx_news_symbol      ON news(symbol);
 CREATE INDEX IF NOT EXISTS idx_news_macro       ON news(is_macro);
+
+-- Daily ranking snapshots (30-day rolling)
+CREATE TABLE IF NOT EXISTS daily_rankings (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_date TEXT NOT NULL,
+    category      TEXT NOT NULL,  -- 'dragon_tiger' | 'individual' | 'etf' | 'premium'
+    rank          INTEGER NOT NULL,
+    contract_code TEXT NOT NULL,
+    underlying    TEXT NOT NULL,
+    option_type   TEXT NOT NULL,
+    strike        REAL NOT NULL,
+    expiration    TEXT NOT NULL,
+    last_price    REAL,
+    change_pct    REAL,
+    volume        INTEGER,
+    vs_avg        REAL,
+    premium       REAL,
+    oi_total      INTEGER,
+    oi_change     INTEGER,
+    iv            REAL,
+    iv_change_pct REAL,
+    delta         REAL,
+    gamma         REAL,
+    theta         REAL,
+    vega          REAL,
+    leap_cp_ratio REAL,
+    narrative     TEXT,
+    is_etf        INTEGER DEFAULT 0,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(snapshot_date, category, contract_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rankings_date ON daily_rankings(snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_rankings_cat  ON daily_rankings(category);
 """
 
 
@@ -104,3 +138,90 @@ def get_conn():
         yield conn
     finally:
         conn.close()
+
+
+def save_ranking_snapshot(
+    snapshot_date: str, category: str, entries: list[dict]
+) -> None:
+    """Save a daily ranking snapshot. Replaces existing entries for the same date + category."""
+    with get_conn() as conn:
+        # Delete existing entries for this date + category
+        conn.execute(
+            "DELETE FROM daily_rankings WHERE snapshot_date = ? AND category = ?",
+            (snapshot_date, category),
+        )
+        # Insert new entries
+        for entry in entries:
+            conn.execute(
+                """
+                INSERT INTO daily_rankings (
+                    snapshot_date, category, rank, contract_code, underlying,
+                    option_type, strike, expiration, last_price, change_pct,
+                    volume, vs_avg, premium, oi_total, oi_change,
+                    iv, iv_change_pct, delta, gamma, theta, vega,
+                    leap_cp_ratio, narrative, is_etf
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    snapshot_date,
+                    category,
+                    entry.get("rank", 0),
+                    entry.get("contract_code", ""),
+                    entry.get("underlying", ""),
+                    entry.get("option_type", ""),
+                    entry.get("strike", 0.0),
+                    entry.get("expiration", ""),
+                    entry.get("last_price", 0.0),
+                    entry.get("change_pct", 0.0),
+                    entry.get("volume", 0),
+                    entry.get("vs_avg", 0.0),
+                    entry.get("premium", 0.0),
+                    entry.get("oi_total", 0),
+                    entry.get("oi_change", 0),
+                    entry.get("iv", 0.0),
+                    entry.get("iv_change_pct", 0.0),
+                    entry.get("delta", 0.0),
+                    entry.get("gamma", 0.0),
+                    entry.get("theta", 0.0),
+                    entry.get("vega", 0.0),
+                    entry.get("leap_cp_ratio", 0.0),
+                    entry.get("narrative", ""),
+                    1 if entry.get("is_etf", False) else 0,
+                ),
+            )
+        conn.commit()
+
+
+def get_ranking_by_date(snapshot_date: str, category: str) -> list[dict]:
+    """Get ranking entries for a specific date and category."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM daily_rankings
+            WHERE snapshot_date = ? AND category = ?
+            ORDER BY rank ASC
+            """,
+            (snapshot_date, category),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def cleanup_old_rankings(days: int = 30) -> int:
+    """Remove rankings older than N days. Returns number of rows deleted."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            "DELETE FROM daily_rankings WHERE snapshot_date < date('now', '-{} days')".format(
+                days
+            )
+        )
+        conn.commit()
+        return cur.rowcount
+
+
+def get_available_ranking_dates() -> list[str]:
+    """Get all dates that have ranking snapshots."""
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT snapshot_date FROM daily_rankings ORDER BY snapshot_date DESC"
+        ).fetchall()
+        return [r["snapshot_date"] for r in rows]

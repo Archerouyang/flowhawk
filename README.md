@@ -48,7 +48,7 @@ src/
 └── storage/               # Parquet local storage
     └── parquet_store.py
 
-dashboard/                  # Streamlit visualization
+dashboard/                  # Streamlit visualization (legacy reference)
 ├── app.py                  # Main entry
 └── pages/
     ├── 01_screener.py      # Screener
@@ -58,6 +58,18 @@ dashboard/                  # Streamlit visualization
     ├── 05_features.py      # Feature mining
     ├── 06_factors.py       # Factor research
     └── 07_live.py          # Live trading
+
+frontend/                   # Next.js 16 Dashboard (active)
+├── app/
+│   ├── page.tsx            # Dashboard (volume rankings + historical)
+│   ├── dashboard/
+│   │   ├── signals/        # Signal mining (8 types, factor cards, detail panel)
+│   │   ├── symbol/[symbol]/# Symbol detail (large trades + option chain)
+│   │   └── signals/[code]/# Contract-level signal analysis
+│   └── layout.tsx
+├── components/ui/          # shadcn/ui components
+├── lib/api.ts              # API client + mock data
+└── public/
 
 scripts/
 └── daily_scan.py           # End-of-day CLI
@@ -80,6 +92,23 @@ uv run python scripts/daily_scan.py
 # 4. Launch dashboard
 uv run streamlit run dashboard/app.py
 ```
+
+## Signal Classification (Frontend)
+
+The Next.js dashboard classifies options flow into 8 signal types:
+
+| Type | Icon | Color | Description |
+|------|------|-------|-------------|
+| Smart Money | 🔮 | Purple | Large block / institutional flow |
+| Sweep | ⚡ | Orange | Multi-exchange sweep orders |
+| Block | 🧱 | Blue | Single large block trade (>$500K) |
+| Dark Pool | 🌑 | Grey | Off-exchange hidden flow |
+| First Timer | 🆕 | Emerald | New symbol first appearance |
+| Index Hedge | 🛡️ | Cyan | Index put hedging signals |
+| Gamma Squeeze | 🚀 | Red | ATM call gamma accumulation |
+| Sector Rotation | 🔄 | Yellow | Sector-level capital rotation |
+
+Each signal carries: composite score (0-100), tier (Conviction/Strong/Monitor), Greeks, IV history, and narrative.
 
 ## Signal Definitions
 
