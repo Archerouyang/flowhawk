@@ -157,17 +157,17 @@ function tierBg(tier: string): string {
 /* ─── Components ─── */
 
 function ScoreRing({ score }: { score: number }) {
-  const size = 48; /* HARDCODED */
-  const stroke = 4; /* HARDCODED */
+  const size = 48;
+  const stroke = 4;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const progress = Math.min(Math.max(score, 0), 100); /* HARDCODED */
+  const progress = Math.min(Math.max(score, 0), 100);
   const offset = circumference - (progress / 100) * circumference;
 
   const strokeColor =
-    score >= 85 /* HARDCODED */
+    score >= 85
       ? "stroke-emerald-400"
-      : score >= 70 /* HARDCODED */
+      : score >= 70
         ? "stroke-amber-400"
         : "stroke-slate-400";
 
@@ -194,7 +194,7 @@ function ScoreRing({ score }: { score: number }) {
             strokeDashoffset: offset,
             strokeLinecap: "round",
             transition: "stroke-dashoffset 0.5s ease",
-            filter: score >= 85 /* HARDCODED */ ? "drop-shadow(0 0 4px rgba(52,211,153,0.3))" : undefined,
+            filter: score >= 85 ? "drop-shadow(0 0 4px rgba(52,211,153,0.3))" : undefined,
           }}
         />
       </svg>
@@ -215,7 +215,7 @@ function SignalCard({
   onSymbolClick?: (symbol: string) => void;
 }) {
   const config = SIGNAL_CONFIG[signal.signal_type];
-  const isCall = signal.option_type === "C"; /* HARDCODED */
+  const isCall = signal.option_type === "C";
 
   return (
     <Card
@@ -223,7 +223,7 @@ function SignalCard({
       onClick={() => onSelect(signal)}
     >
       {/* Left color bar */}
-      <div className={`absolute left-0 top-0 bottom-0 w-1 ${config.barColor}`} /> /* HARDCODED */
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${config.barColor}`} />
 
       <CardContent className="p-3 pl-4">
         {/* Row 1: Symbol + Type + Strike | Score | Time */}
@@ -245,8 +245,8 @@ function SignalCard({
                 variant="outline"
                 className={
                   isCall
-                    ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10 text-xs" /* HARDCODED */
-                    : "border-rose-500/30 text-rose-400 bg-rose-500/10 text-xs" /* HARDCODED */
+                    ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10 text-xs"
+                    : "border-rose-500/30 text-rose-400 bg-rose-500/10 text-xs"
                 }
               >
                 {signal.option_type}
@@ -282,18 +282,18 @@ function SignalCard({
 
         {/* Row 2: Tags (always visible, compact) */}
         <div className="flex flex-wrap gap-1.5 mt-2.5">
-          {signal.tags.slice(0, 3 /* HARDCODED */).map((tag, i) => (
+          {signal.tags.slice(0, 3).map((tag, i) => (
             <Badge
               key={i}
               variant="outline"
-              className="text-[10px] px-1.5 py-0 h-5" /* HARDCODED */
+              className="text-[10px] px-1.5 py-0 h-5"
             >
               {tag}
             </Badge>
           ))}
-          {signal.tags.length > 3 /* HARDCODED */ && (
+          {signal.tags.length > 3 && (
             <span className="text-[10px] text-muted-foreground self-center">
-              +{signal.tags.length - 3 /* HARDCODED */}
+              +{signal.tags.length - 3}
             </span>
           )}
         </div>
@@ -312,7 +312,7 @@ function SignalCard({
               <span className="text-border">|</span>
               <span>DTE {signal.dte}</span>
               <span className="text-border">|</span>
-              <span className={signal.voi_ratio >= 5 /* HARDCODED */ ? "text-orange-400 font-medium" : ""}>
+              <span className={signal.voi_ratio >= 5 ? "text-orange-400 font-medium" : ""}>
                 V/OI {signal.voi_ratio.toFixed(1)}x
               </span>
             </div>

@@ -7,8 +7,8 @@
  * Otherwise, calls are proxied to the FastAPI backend via Next.js rewrites.
  */
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"; /* HARDCODED */
-const API_BASE = "/api/v1"; /* HARDCODED */
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+const API_BASE = "/api/v1";
 
 export interface ScreenParams {
   symbols: string[];
@@ -95,8 +95,8 @@ export interface DashboardSummary {
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST", /* HARDCODED */
-    headers: { "Content-Type": "application/json" }, /* HARDCODED */
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -118,42 +118,42 @@ async function get<T>(path: string): Promise<T> {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function mockScreen(_screenParams: ScreenParams): ScreenResponse {
   return {
-    count: 5, /* HARDCODED */
+    count: 5,
     candidates: [
       {
-        symbol: "AAPL" /* HARDCODED */, option_type: "C" /* HARDCODED */, strike: 185 /* HARDCODED */,
-        expiration: "2026-12-18" /* HARDCODED */, last_price: 12.5 /* HARDCODED */,
-        volume: 3420 /* HARDCODED */, open_interest: 12500 /* HARDCODED */,
-        voi_ratio: 4.2 /* HARDCODED */, delta: 0.72 /* HARDCODED */,
-        implied_volatility: 0.32 /* HARDCODED */, anomaly_score: 0.85 /* HARDCODED */,
+        symbol: "AAPL", option_type: "C", strike: 185,
+        expiration: "2026-12-18", last_price: 12.5,
+        volume: 3420, open_interest: 12500,
+        voi_ratio: 4.2, delta: 0.72,
+        implied_volatility: 0.32, anomaly_score: 0.85,
       },
       {
-        symbol: "TSLA" /* HARDCODED */, option_type: "C" /* HARDCODED */, strike: 220 /* HARDCODED */,
-        expiration: "2026-09-19" /* HARDCODED */, last_price: 18.3 /* HARDCODED */,
-        volume: 5600 /* HARDCODED */, open_interest: 8900 /* HARDCODED */,
-        voi_ratio: 5.1 /* HARDCODED */, delta: 0.68 /* HARDCODED */,
-        implied_volatility: 0.45 /* HARDCODED */, anomaly_score: 0.92 /* HARDCODED */,
+        symbol: "TSLA", option_type: "C", strike: 220,
+        expiration: "2026-09-19", last_price: 18.3,
+        volume: 5600, open_interest: 8900,
+        voi_ratio: 5.1, delta: 0.68,
+        implied_volatility: 0.45, anomaly_score: 0.92,
       },
       {
-        symbol: "NVDA" /* HARDCODED */, option_type: "C" /* HARDCODED */, strike: 130 /* HARDCODED */,
-        expiration: "2027-01-15" /* HARDCODED */, last_price: 22.0 /* HARDCODED */,
-        volume: 8900 /* HARDCODED */, open_interest: 15600 /* HARDCODED */,
-        voi_ratio: 3.8 /* HARDCODED */, delta: 0.75 /* HARDCODED */,
-        implied_volatility: 0.38 /* HARDCODED */, anomaly_score: 0.78 /* HARDCODED */,
+        symbol: "NVDA", option_type: "C", strike: 130,
+        expiration: "2027-01-15", last_price: 22.0,
+        volume: 8900, open_interest: 15600,
+        voi_ratio: 3.8, delta: 0.75,
+        implied_volatility: 0.38, anomaly_score: 0.78,
       },
       {
-        symbol: "MSFT" /* HARDCODED */, option_type: "C" /* HARDCODED */, strike: 420 /* HARDCODED */,
-        expiration: "2026-11-20" /* HARDCODED */, last_price: 28.5 /* HARDCODED */,
-        volume: 2100 /* HARDCODED */, open_interest: 7800 /* HARDCODED */,
-        voi_ratio: 3.5 /* HARDCODED */, delta: 0.70 /* HARDCODED */,
-        implied_volatility: 0.25 /* HARDCODED */, anomaly_score: 0.71 /* HARDCODED */,
+        symbol: "MSFT", option_type: "C", strike: 420,
+        expiration: "2026-11-20", last_price: 28.5,
+        volume: 2100, open_interest: 7800,
+        voi_ratio: 3.5, delta: 0.70,
+        implied_volatility: 0.25, anomaly_score: 0.71,
       },
       {
-        symbol: "AMZN" /* HARDCODED */, option_type: "C" /* HARDCODED */, strike: 195 /* HARDCODED */,
-        expiration: "2026-10-17" /* HARDCODED */, last_price: 15.2 /* HARDCODED */,
-        volume: 4500 /* HARDCODED */, open_interest: 11200 /* HARDCODED */,
-        voi_ratio: 6.2 /* HARDCODED */, delta: 0.65 /* HARDCODED */,
-        implied_volatility: 0.35 /* HARDCODED */, anomaly_score: 0.88 /* HARDCODED */,
+        symbol: "AMZN", option_type: "C", strike: 195,
+        expiration: "2026-10-17", last_price: 15.2,
+        volume: 4500, open_interest: 11200,
+        voi_ratio: 6.2, delta: 0.65,
+        implied_volatility: 0.35, anomaly_score: 0.88,
       },
     ],
   };

@@ -91,12 +91,12 @@ function parseContractCode(code: string): {
   const m = code.match(/^([A-Z]+)(\d{6})([CP])([\d.]+)$/);
   if (!m) return null;
   const [, sym, dateStr, optType, strikeStr] = m;
-  const yy = dateStr.slice(0, 2); /* HARDCODED */
-  const mm = dateStr.slice(2, 4); /* HARDCODED */
-  const dd = dateStr.slice(4, 6); /* HARDCODED */
+  const yy = dateStr.slice(0, 2);
+  const mm = dateStr.slice(2, 4);
+  const dd = dateStr.slice(4, 6);
   return {
     underlying: sym,
-    expiry: `20${yy}-${mm}-${dd}`, /* HARDCODED */
+    expiry: `20${yy}-${mm}-${dd}`,
     option_type: optType as "C" | "P",
     strike: parseFloat(strikeStr),
   };
@@ -106,13 +106,13 @@ function parseContractCode(code: string): {
 function seededRandom(seed: string): () => number {
   let h = 0;
   for (let i = 0; i < seed.length; i++) {
-    h = (h << 5) - h + seed.charCodeAt(i); /* HARDCODED */
+    h = (h << 5) - h + seed.charCodeAt(i);
     h |= 0;
   }
   return () => {
-    h = (h * 16807 + 0) % 2147483647; /* HARDCODED */
-    if (h < 0) h += 2147483647; /* HARDCODED */
-    return (h - 1) / 2147483646; /* HARDCODED */
+    h = (h * 16807 + 0) % 2147483647;
+    if (h < 0) h += 2147483647;
+    return (h - 1) / 2147483646;
   };
 }
 
@@ -122,30 +122,30 @@ function generateMockDetail(code: string): ContractDetail {
   if (!parsed) {
     return {
       code,
-      underlying: "UNKNOWN", /* HARDCODED */
-      strike: 0, /* HARDCODED */
-      expiration: "", /* HARDCODED */
-      option_type: "C", /* HARDCODED */
-      last_price: 0, /* HARDCODED */
-      high: 0, /* HARDCODED */
-      low: 0, /* HARDCODED */
-      change_pct: 0, /* HARDCODED */
-      volume: 0, /* HARDCODED */
-      open_interest: 0, /* HARDCODED */
-      iv: 0, /* HARDCODED */
-      delta: 0, /* HARDCODED */
-      gamma: 0, /* HARDCODED */
-      theta: 0, /* HARDCODED */
-      vega: 0, /* HARDCODED */
-      leap_cp_ratio: 0, /* HARDCODED */
-      call_volume: 0, /* HARDCODED */
-      put_volume: 0, /* HARDCODED */
-      stock_change_pct: 0, /* HARDCODED */
-      stock_price: 0, /* HARDCODED */
-      pre_market_price: null, /* HARDCODED */
-      post_market_price: null, /* HARDCODED */
-      trades: [], /* HARDCODED */
-      analysis: null, /* HARDCODED */
+      underlying: "UNKNOWN",
+      strike: 0,
+      expiration: "",
+      option_type: "C",
+      last_price: 0,
+      high: 0,
+      low: 0,
+      change_pct: 0,
+      volume: 0,
+      open_interest: 0,
+      iv: 0,
+      delta: 0,
+      gamma: 0,
+      theta: 0,
+      vega: 0,
+      leap_cp_ratio: 0,
+      call_volume: 0,
+      put_volume: 0,
+      stock_change_pct: 0,
+      stock_price: 0,
+      pre_market_price: null,
+      post_market_price: null,
+      trades: [],
+      analysis: null,
     };
   }
 
@@ -154,15 +154,15 @@ function generateMockDetail(code: string): ContractDetail {
   const isCall = option_type === "C";
 
   // Base contract data
-  const basePrice = 5 + rng() * 45; /* HARDCODED */
-  const lastPrice = Math.round(basePrice * 100) / 100; /* HARDCODED */
-  const changePct = (rng() - 0.5) * 20; /* HARDCODED */
-  const high = Math.round((lastPrice * (1 + Math.abs(rng() * 0.08))) * 100) / 100; /* HARDCODED */
-  const low = Math.round((lastPrice * (1 - Math.abs(rng() * 0.06))) * 100) / 100; /* HARDCODED */
-  const volume = Math.floor(2000 + rng() * 48000); /* HARDCODED */
-  const oi = Math.floor(3000 + rng() * 25000); /* HARDCODED */
-  const iv = 0.15 + rng() * 0.45; /* HARDCODED */
-  const delta = isCall ? 0.35 + rng() * 0.45 : -(0.35 + rng() * 0.45); /* HARDCODED */
+  const basePrice = 5 + rng() * 45;
+  const lastPrice = Math.round(basePrice * 100) / 100;
+  const changePct = (rng() - 0.5) * 20;
+  const high = Math.round((lastPrice * (1 + Math.abs(rng() * 0.08))) * 100) / 100;
+  const low = Math.round((lastPrice * (1 - Math.abs(rng() * 0.06))) * 100) / 100;
+  const volume = Math.floor(2000 + rng() * 48000);
+  const oi = Math.floor(3000 + rng() * 25000);
+  const iv = 0.15 + rng() * 0.45;
+  const delta = isCall ? 0.35 + rng() * 0.45 : -(0.35 + rng() * 0.45);
   const gamma = 0.005 + rng() * 0.02;
   const theta = -(0.01 + rng() * 0.06);
   const vega = 0.08 + rng() * 0.25;
