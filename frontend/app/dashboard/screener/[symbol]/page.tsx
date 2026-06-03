@@ -17,10 +17,13 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Eye,
-  Zap,
   BarChart3,
 } from "lucide-react";
 import { MOCK_CLASSIFIED_SIGNALS } from "@/lib/api";
+import IVTermStructure from "./components/iv-term-structure";
+import TradeTimeline from "./components/trade-timeline";
+import GreeksHeatmap from "./components/greeks-heatmap";
+import VolumeProfile from "./components/volume-profile";
 
 interface LargeTrade {
   time: string;
@@ -47,6 +50,9 @@ interface ChainEntry {
   vs_avg: number;
   oi: number;
   delta: number;
+  gamma: number;
+  theta: number;
+  vega: number;
   iv: number;
 }
 
@@ -93,7 +99,6 @@ function generateMockTrades(symbol: string): LargeTrade[] {
     });
   }
 
-  // Sort by time (chronological)
   return trades.sort((a, b) => a.time.localeCompare(b.time));
 }
 
@@ -125,6 +130,9 @@ function generateMockChain(symbol: string): ChainEntry[] {
       vs_avg: Number(vsAvg.toFixed(1)),
       oi: Math.floor(vol * (0.3 + seededRandom(seed + 7))),
       delta: Number((isCall ? 0.5 + seededRandom(seed + 8) * 0.4 : -0.5 - seededRandom(seed + 8) * 0.4).toFixed(2)),
+      gamma: Number((0.005 + seededRandom(seed + 10) * 0.02).toFixed(3)),
+      theta: Number((-0.01 - seededRandom(seed + 11) * 0.06).toFixed(3)),
+      vega: Number((0.05 + seededRandom(seed + 12) * 0.25).toFixed(3)),
       iv: Number((0.2 + seededRandom(seed + 9) * 0.4).toFixed(2)),
     });
   }
@@ -148,10 +156,11 @@ export default function SymbolDetailPage() {
   const router = useRouter();
   const symbol = (params.symbol as string)?.toUpperCase() || "";
 
+  const basePrice = useMemo(() => 50 + seededRandom(symbol.charCodeAt(0)) * 500, [symbol]);
   const trades = useMemo(() => generateMockTrades(symbol), [symbol]);
   const chain = useMemo(() => generateMockChain(symbol), [symbol]);
   const signals = useMemo(
-    () => MOCK_CLASSIFIED_SIGNALS.filter((s: { symbol: string }) => s.symbol === symbol),
+    () => MOCK_CLASSIFIED_SIGNALS.filter((s) => s.symbol === symbol),
     [symbol]
   );
 
@@ -166,7 +175,7 @@ export default function SymbolDetailPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{symbol}</h1>
           <p className="text-sm text-muted-foreground">
-            个股期权大单异动 & 成交量总异动
+            个股期权大单异动 &amp; 成交量总异动
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => router.push("/dashboard")}>
@@ -206,6 +215,12 @@ export default function SymbolDetailPage() {
         </Card>
       </div>
 
+      {/* IV Term Structure + Volume Profile */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <IVTermStructure chain={chain} />
+        <VolumeProfile chain={chain} underlyingPrice={basePrice} />
+      </div>
+
       {/* Signal Discovery */}
       {signals.length > 0 && (
         <Card className="border-border bg-card">
@@ -217,7 +232,7 @@ export default function SymbolDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {signals.map((sig: { symbol: string; expiration: string; option_type: string; strike: number; tier: string; composite_score: number; signal_type: string }) => (
+              {signals.map((sig) => (
                 <button
                   key={`${sig.symbol}-${sig.strike}-${sig.expiration}`}
                   onClick={() => router.push(`/dashboard/signals/${sig.symbol}${sig.expiration.replace(/-/g, "").slice(2)}${sig.option_type}${sig.strike}`)}
@@ -254,66 +269,11 @@ export default function SymbolDetailPage() {
         </Card>
       )}
 
-      {/* Large Trade Anomaly */}
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Zap className="h-4 w-4 text-yellow-400" />
-            大单异动（单笔 $100K+）
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead>时间</TableHead>
-                  <TableHead>合约</TableHead>
-                  <TableHead>方向</TableHead>
-                  <TableHead className="text-right">成交价</TableHead>
-                  <TableHead className="text-right">数量</TableHead>
-                  <TableHead className="text-right">金额</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>交易所</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {trades.map((t, i) => (
-                  <TableRow key={i} className="border-border">
-                    <TableCell className="font-mono text-sm">{t.time}</TableCell>
-                    <TableCell className="font-mono font-bold text-sm">
-                      {t.contract_code}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          t.direction === "Buy"
-                            ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10 text-xs"
-                            : "border-rose-500/30 text-rose-400 bg-rose-500/10 text-xs"
-                        }
-                      >
-                        {t.direction}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">${t.price.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-mono">{t.size.toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-mono text-blue-400">
-                      ${t.premium.toFixed(2)}M
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-xs">
-                        {t.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{t.exchange}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Trade Timeline */}
+      <TradeTimeline trades={trades} />
+
+      {/* Greeks Heatmap */}
+      <GreeksHeatmap chain={chain} underlyingPrice={basePrice} />
 
       {/* Option Chain — Volume Anomaly */}
       <Card className="border-border bg-card">
@@ -336,6 +296,9 @@ export default function SymbolDetailPage() {
                   <TableHead className="text-right">量能</TableHead>
                   <TableHead className="text-right">持仓量</TableHead>
                   <TableHead className="text-right">Delta</TableHead>
+                  <TableHead className="text-right">Gamma</TableHead>
+                  <TableHead className="text-right">Theta</TableHead>
+                  <TableHead className="text-right">Vega</TableHead>
                   <TableHead className="text-right">IV</TableHead>
                 </TableRow>
               </TableHeader>
@@ -384,6 +347,15 @@ export default function SymbolDetailPage() {
                       {e.delta.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right font-mono text-muted-foreground">
+                      {e.gamma.toFixed(3)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">
+                      {e.theta.toFixed(3)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">
+                      {e.vega.toFixed(3)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">
                       {(e.iv * 100).toFixed(1)}%
                     </TableCell>
                   </TableRow>
@@ -393,7 +365,6 @@ export default function SymbolDetailPage() {
           </div>
         </CardContent>
       </Card>
-
     </div>
   );
 }
