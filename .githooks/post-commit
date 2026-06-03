@@ -1,0 +1,30 @@
+#!/bin/bash
+# Post-commit hook: auto-log progress to Obsidian vault
+# Installed via: git config core.hooksPath .githooks
+
+set -e
+
+PROJECT_NAME="flowhawk"
+LOG_SCRIPT="$HOME/.claude/scripts/obsidian-log.sh"
+
+# Skip if obsidian-log.sh is not available
+if [[ ! -x "$LOG_SCRIPT" ]]; then
+  echo "[post-commit] obsidian-log.sh not found, skipping vault log"
+  exit 0
+fi
+
+# Get commit info
+COMMIT_MSG=$(git log -1 --pretty=%B | head -1)
+COMMIT_HASH=$(git log -1 --pretty=%h)
+
+# Stats: files changed, insertions, deletions
+# git diff-tree output on a single commit:
+# <additions> <deletions> <path>
+FILES_CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null | wc -l | tr -d ' ')
+STATS=$(git diff-tree --no-commit-id --numstat -r HEAD 2>/dev/null | awk '{add+=$1; del+=$2} END {if (add=="") add=0; if (del=="") del=0; printf "+%s -%s", add, del}')
+
+# Build concise log entry
+CONTENT="[\`$COMMIT_HASH\`] $COMMIT_MSG · $FILES_CHANGED files, $STATS"
+
+# Log silently to avoid polluting git output
+"$LOG_SCRIPT" project "$PROJECT_NAME" "$CONTENT" > /dev/null 2>&1 || true
