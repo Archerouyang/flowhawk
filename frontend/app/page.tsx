@@ -31,11 +31,9 @@ import {
   getContractStats,
   getSignals,
   getHistoricalRanking,
-  getRankingDates,
   type ContractEntry,
   type ContractDashboardStats,
   type ClassifiedSignal,
-  type HistoricalRankingResponse,
 } from "@/lib/api";
 
 type CategoryKey = "dragon_tiger" | "individual" | "etf";
@@ -203,23 +201,11 @@ export default function DashboardPage() {
   const [signals, setSignals] = useState<ClassifiedSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-
   const today = new Date().toISOString().split("T")[0];
   const isHistorical = selectedDate && selectedDate !== today;
 
   useEffect(() => {
     let cancelled = false;
-    getRankingDates().then((d) => {
-      if (cancelled) return;
-      setAvailableDates(d.dates);
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
 
     if (isHistorical) {
       // Load historical data for all categories
@@ -319,7 +305,10 @@ export default function DashboardPage() {
               className="h-9 rounded-md border border-border bg-card px-2 text-sm"
               value={selectedDate}
               max={today}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => {
+                setLoading(true);
+                setSelectedDate(e.target.value);
+              }}
             />
           </div>
           <Button variant="outline" size="sm" onClick={handleRefresh}>

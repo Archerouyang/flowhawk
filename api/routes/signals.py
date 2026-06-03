@@ -141,7 +141,7 @@ async def generate_signals(request: SignalRequest) -> SignalResponse:
 
     # Classify anomalies into signal types
     classifier = SignalClassifier(history_symbols=set())
-    detected_signals = classifier.classify(anomaly_df, meta_map)
+    detected_signals = classifier.classify(anomaly_df, meta_map)  # type: ignore[arg-type]
 
     # Build lookup: symbol -> highest-volume anomaly row
     anomaly_by_sym: dict[str, dict] = {}

@@ -20,11 +20,9 @@ import {
   TrendingUp,
   Activity,
   AlertTriangle,
-  Target,
   Info,
   Zap,
   BarChart3,
-  Repeat,
 } from "lucide-react";
 import { getSignals, type ClassifiedSignal } from "@/lib/api";
 
@@ -425,10 +423,11 @@ function GreeksBar({ label, value, max, color }: { label: string; value: number;
 }
 
 function GreeksSection({ detail }: { detail: ContractDetail }) {
+  const [now] = useState(() => Date.now());
   const dte = Math.max(
     0,
     Math.ceil(
-      (new Date(detail.expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      (new Date(detail.expiration).getTime() - now) / (1000 * 60 * 60 * 24)
     )
   );
 
