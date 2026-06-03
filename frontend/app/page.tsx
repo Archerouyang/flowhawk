@@ -146,7 +146,6 @@ function RankingTable({
                   >
                     {entry.underlying}
                   </button>
-                  {' · '}${entry.strike} · {entry.expiration}
                 </div>
               </TableCell>
               <TableCell>

@@ -111,6 +111,7 @@ function seededRandom(seed: string): () => number {
   }
   return () => {
     h = (h * 16807 + 0) % 2147483647;
+    if (h < 0) h += 2147483647;
     return (h - 1) / 2147483646;
   };
 }
@@ -407,21 +408,7 @@ function AnomalyMetricsGrid({ detail }: { detail: ContractDetail }) {
   );
 }
 
-function GreeksBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  const pct = Math.min(Math.abs(value) / max, 1);
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-mono font-medium">{value.toFixed(3)}</span>
-      </div>
-      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct * 100}%` }} />
-      </div>
-    </div>
-  );
-}
-
+/** Display Greeks & IV as clean numeric cards (no progress bars). */
 function GreeksSection({ detail }: { detail: ContractDetail }) {
   const [now] = useState(() => Date.now());
   const dte = Math.max(
@@ -431,29 +418,23 @@ function GreeksSection({ detail }: { detail: ContractDetail }) {
     )
   );
 
+  const greeks = [
+    { label: "Delta", value: detail.delta.toFixed(3), color: "text-blue-400" },
+    { label: "Gamma", value: detail.gamma.toFixed(3), color: "text-purple-400" },
+    { label: "Theta", value: detail.theta.toFixed(3), color: "text-amber-400" },
+    { label: "Vega", value: detail.vega.toFixed(2), color: "text-cyan-400" },
+    { label: "IV", value: `${detail.iv.toFixed(1)}%`, color: "text-emerald-400" },
+    { label: "DTE", value: String(dte), color: "text-slate-400" },
+  ];
+
   return (
-    <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-      <div className="space-y-4">
-        <GreeksBar label="Delta" value={detail.delta} max={1} color="bg-blue-400" />
-        <GreeksBar label="Gamma" value={detail.gamma} max={0.05} color="bg-purple-400" />
-        <GreeksBar label="Theta" value={detail.theta} max={0.1} color="bg-amber-400" />
-      </div>
-      <div className="space-y-4">
-        <GreeksBar label="Vega" value={detail.vega} max={0.3} color="bg-cyan-400" />
-        <GreeksBar label="IV" value={detail.iv} max={1} color="bg-emerald-400" />
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">DTE</span>
-            <span className="font-mono font-medium">{dte}</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-slate-400"
-              style={{ width: `${Math.min(dte / 365, 1) * 100}%` }}
-            />
-          </div>
+    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+      {greeks.map((g) => (
+        <div key={g.label} className="bg-muted/50 rounded-md p-2.5 text-center">
+          <div className={`text-lg font-mono font-bold ${g.color}`}>{g.value}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">{g.label}</div>
         </div>
-      </div>
+      ))}
     </div>
   );
 }

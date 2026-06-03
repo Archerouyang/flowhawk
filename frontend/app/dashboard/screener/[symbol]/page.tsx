@@ -206,6 +206,54 @@ export default function SymbolDetailPage() {
         </Card>
       </div>
 
+      {/* Signal Discovery */}
+      {signals.length > 0 && (
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Eye className="h-4 w-4 text-purple-400" />
+              信号发掘 — {signals.length} 条
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {signals.map((sig: { symbol: string; expiration: string; option_type: string; strike: number; tier: string; composite_score: number; signal_type: string }) => (
+                <button
+                  key={`${sig.symbol}-${sig.strike}-${sig.expiration}`}
+                  onClick={() => router.push(`/dashboard/signals/${sig.symbol}${sig.expiration.replace(/-/g, "").slice(2)}${sig.option_type}${sig.strike}`)}
+                  className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <Badge
+                    variant="outline"
+                    className={
+                      sig.option_type === "C"
+                        ? "border-emerald-500/30 text-emerald-400 text-xs"
+                        : "border-rose-500/30 text-rose-400 text-xs"
+                    }
+                  >
+                    {sig.option_type}
+                  </Badge>
+                  <span className="font-mono">${sig.strike}</span>
+                  <Badge
+                    variant="secondary"
+                    className={
+                      sig.tier === "🔴 conviction"
+                        ? "bg-red-500/20 text-red-400"
+                        : sig.tier === "🟠 strong"
+                        ? "bg-orange-500/20 text-orange-400"
+                        : "bg-yellow-500/20 text-yellow-400"
+                    }
+                  >
+                    {sig.composite_score}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">{sig.signal_type}</span>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Large Trade Anomaly */}
       <Card className="border-border bg-card">
         <CardHeader>
@@ -346,53 +394,6 @@ export default function SymbolDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Signal Discovery */}
-      {signals.length > 0 && (
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Eye className="h-4 w-4 text-purple-400" />
-              信号发掘 — {signals.length} 条
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {signals.map((sig: { symbol: string; expiration: string; option_type: string; strike: number; tier: string; composite_score: number; signal_type: string }) => (
-                <button
-                  key={`${sig.symbol}-${sig.strike}-${sig.expiration}`}
-                  onClick={() => router.push(`/dashboard/signals/${sig.symbol}${sig.expiration.replace(/-/g, "").slice(2)}${sig.option_type}${sig.strike}`)}
-                  className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm transition-colors hover:bg-muted"
-                >
-                  <Badge
-                    variant="outline"
-                    className={
-                      sig.option_type === "C"
-                        ? "border-emerald-500/30 text-emerald-400 text-xs"
-                        : "border-rose-500/30 text-rose-400 text-xs"
-                    }
-                  >
-                    {sig.option_type}
-                  </Badge>
-                  <span className="font-mono">${sig.strike}</span>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      sig.tier === "🔴 conviction"
-                        ? "bg-red-500/20 text-red-400"
-                        : sig.tier === "🟠 strong"
-                        ? "bg-orange-500/20 text-orange-400"
-                        : "bg-yellow-500/20 text-yellow-400"
-                    }
-                  >
-                    {sig.composite_score}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">{sig.signal_type}</span>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
