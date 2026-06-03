@@ -39,13 +39,16 @@ class LongbridgeDataSource:
     def _run(self, *args: str) -> dict:
         """Execute longbridge CLI and return parsed JSON."""
         cmd = ["longbridge", *args, "--format", "json"]
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            return {}
         if result.returncode != 0:
             return {}
         try:
