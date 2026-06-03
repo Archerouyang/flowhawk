@@ -115,7 +115,7 @@ function generateMockChain(symbol: string): ChainEntry[] {
     const vsAvg = 1.5 + seededRandom(seed + 6) * 15;
 
     entries.push({
-      contract_code: `${symbol}${expShort}${isCall ? "C" : "P"}${strike}_${i}`,
+      contract_code: `${symbol}${expShort}${isCall ? "C" : "P"}${strike}`,
       option_type: isCall ? "C" : "P",
       strike,
       expiration: expiry,
@@ -233,11 +233,8 @@ export default function SymbolDetailPage() {
                 {trades.map((t, i) => (
                   <TableRow key={i} className="border-border">
                     <TableCell className="font-mono text-sm">{t.time}</TableCell>
-                    <TableCell>
-                      <div className="font-mono font-bold text-sm">{t.contract_code}</div>
-                      <div className="text-xs text-muted-foreground">
-                        ${t.strike} · {t.expiration}
-                      </div>
+                    <TableCell className="font-mono font-bold text-sm">
+                      {t.contract_code}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -295,9 +292,9 @@ export default function SymbolDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {chain.map((e) => (
+                {chain.map((e, i) => (
                   <TableRow
-                    key={e.contract_code}
+                    key={`${e.contract_code}-${i}`}
                     className="border-border cursor-pointer hover:bg-muted/30"
                     onClick={() => router.push(`/dashboard/signals/${e.contract_code}`)}
                   >

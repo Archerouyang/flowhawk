@@ -369,7 +369,7 @@ function SignalDetailPanel({ signal, onClose }: { signal: ClassifiedSignal; onCl
               className="hover:text-blue-400 hover:underline transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                router.push(`/dashboard/symbol/${signal.symbol}`);
+                router.push(`/dashboard/screener/${signal.symbol}`);
               }}
             >
               {signal.symbol}
@@ -525,7 +525,7 @@ function SignalDetailPanel({ signal, onClose }: { signal: ClassifiedSignal; onCl
             className="w-full"
             onClick={() => {
               onClose();
-              setTimeout(() => router.push(`/dashboard/symbol/${signal.symbol}`), 150);
+              setTimeout(() => router.push(`/dashboard/screener/${signal.symbol}`), 150);
             }}
           >
             <Search className="h-4 w-4 mr-2" />
@@ -842,7 +842,7 @@ export default function SignalsPage() {
             key={`${sig.symbol}-${sig.strike}-${sig.expiration}`}
             signal={sig}
             onSelect={setSelectedSignal}
-            onSymbolClick={(symbol) => router.push(`/dashboard/symbol/${symbol}`)}
+            onSymbolClick={(symbol) => router.push(`/dashboard/screener/${symbol}`)}
           />
         ))}
       </div>

@@ -265,7 +265,7 @@ export default function DashboardPage() {
   };
 
   const handleSymbolClick = (symbol: string) => {
-    router.push(`/dashboard/symbol/${symbol}`);
+    router.push(`/dashboard/screener/${symbol}`);
   };
 
   if (loading) {
