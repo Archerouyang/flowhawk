@@ -16,8 +16,6 @@ import {
 import {
   ArrowUpRight,
   ArrowDownRight,
-  TrendingUp,
-  Activity,
   Eye,
   Zap,
   BarChart3,
@@ -101,7 +99,7 @@ function generateMockChain(symbol: string): ChainEntry[] {
     const vsAvg = 1.5 + seededRandom(seed + 6) * 15;
 
     entries.push({
-      contract_code: `${symbol}${expShort}${isCall ? "C" : "P"}${strike}`,
+      contract_code: `${symbol}${expShort}${isCall ? "C" : "P"}${strike}_${i}`,
       option_type: isCall ? "C" : "P",
       strike,
       expiration: expiry,

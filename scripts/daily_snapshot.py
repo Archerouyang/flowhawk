@@ -37,7 +37,9 @@ def main() -> None:
     snapshot_date = date.today().isoformat()
     print(f"Generating daily snapshot for {snapshot_date}...")
 
-    snapshot = generate_options_snapshot(SYMBOLS, date.today(), num_contracts_per_symbol=30)
+    snapshot = generate_options_snapshot(
+        SYMBOLS, date.today(), num_contracts_per_symbol=30
+    )
     meta_map = generate_symbol_meta(SYMBOLS)
     rankings = generate_contract_rankings(snapshot, meta_map)
 

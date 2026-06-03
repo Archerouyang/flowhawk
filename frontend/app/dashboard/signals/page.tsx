@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,6 @@ import {
   Search,
   SlidersHorizontal,
   Clock,
-  ArrowUpRight,
-  ArrowDownRight,
   X,
   Target,
   Zap,
@@ -210,13 +208,14 @@ function ScoreRing({ score }: { score: number }) {
 function SignalCard({
   signal,
   onSelect,
+  onSymbolClick,
 }: {
   signal: ClassifiedSignal;
   onSelect: (s: ClassifiedSignal) => void;
+  onSymbolClick?: (symbol: string) => void;
 }) {
   const config = SIGNAL_CONFIG[signal.signal_type];
   const isCall = signal.option_type === "C";
-  const router = useRouter();
 
   return (
     <Card
@@ -237,7 +236,7 @@ function SignalCard({
                 className="font-mono font-bold text-lg hover:text-blue-400 hover:underline transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
-                  router.push(`/dashboard/symbol/${signal.symbol}`);
+                  onSymbolClick?.(signal.symbol);
                 }}
               >
                 {signal.symbol}
@@ -321,6 +320,36 @@ function SignalCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function IVSparkline({ history }: { history: number[] }) {
+  const vals = history.map((v) => v * 100);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const range = max - min || 1;
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-end gap-0.5 h-10">
+        {vals.map((v, i) => {
+          const h = ((v - min) / range) * 100;
+          const isCurrent = i === vals.length - 1;
+          return (
+            <div
+              key={i}
+              className={`flex-1 rounded-sm ${isCurrent ? "bg-cyan-400" : "bg-cyan-400/30"}`}
+              style={{ height: `${Math.max(h, 15)}%` }}
+              title={`Day ${i + 1}: ${v.toFixed(1)}%`}
+            />
+          );
+        })}
+      </div>
+      <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+        <span>10d ago</span>
+        <span>Today</span>
+      </div>
+    </div>
   );
 }
 
@@ -458,32 +487,7 @@ function SignalDetailPanel({ signal, onClose }: { signal: ClassifiedSignal; onCl
             </div>
             {/* Sparkline */}
             {signal.iv_history && signal.iv_history.length > 0 && (
-              <div className="mt-2">
-                <div className="flex items-end gap-0.5 h-10">
-                  {(() => {
-                    const vals = signal.iv_history.map((v) => v * 100);
-                    const min = Math.min(...vals);
-                    const max = Math.max(...vals);
-                    const range = max - min || 1;
-                    return vals.map((v, i) => {
-                      const h = ((v - min) / range) * 100;
-                      const isCurrent = i === vals.length - 1;
-                      return (
-                        <div
-                          key={i}
-                          className={`flex-1 rounded-sm ${isCurrent ? "bg-cyan-400" : "bg-cyan-400/30"}`}
-                          style={{ height: `${Math.max(h, 15)}%` }}
-                          title={`Day ${i + 1}: ${v.toFixed(1)}%`}
-                        />
-                      );
-                    });
-                  })()}
-                </div>
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                  <span>10d ago</span>
-                  <span>Today</span>
-                </div>
-              </div>
+              <IVSparkline history={signal.iv_history} />
             )}
           </div>
         </div>
@@ -544,7 +548,6 @@ function SignalDetailPanel({ signal, onClose }: { signal: ClassifiedSignal; onCl
 
 export default function SignalsPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [signals, setSignals] = useState<ClassifiedSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<SignalType | "all">("all");
@@ -552,7 +555,12 @@ export default function SignalsPage() {
   const [filterSector, setFilterSector] = useState("all");
   const [filterDte, setFilterDte] = useState("all");
   const [sortBy, setSortBy] = useState("score_desc");
-  const [searchSymbol, setSearchSymbol] = useState("");
+  const [searchSymbol, setSearchSymbol] = useState(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("symbol") || "";
+    }
+    return "";
+  });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<ClassifiedSignal | null>(null);
 
@@ -560,11 +568,7 @@ export default function SignalsPage() {
     getSignals()
       .then((res) => setSignals(res.signals))
       .finally(() => setLoading(false));
-
-    // Read symbol from URL query param
-    const symbol = searchParams.get("symbol");
-    if (symbol) setSearchSymbol(symbol);
-  }, [searchParams]);
+  }, []);
 
   const stats = useMemo(() => {
     return {
@@ -838,6 +842,7 @@ export default function SignalsPage() {
             key={`${sig.symbol}-${sig.strike}-${sig.expiration}`}
             signal={sig}
             onSelect={setSelectedSignal}
+            onSymbolClick={(symbol) => router.push(`/dashboard/symbol/${symbol}`)}
           />
         ))}
       </div>
