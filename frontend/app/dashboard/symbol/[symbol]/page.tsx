@@ -30,6 +30,10 @@ interface LargeTrade {
   premium: number;
   type: "Block" | "Sweep" | "Iceberg" | "Above Ask";
   exchange: string;
+  contract_code: string;
+  option_type: string;
+  strike: number;
+  expiration: string;
 }
 
 interface ChainEntry {
@@ -56,6 +60,8 @@ function generateMockTrades(symbol: string): LargeTrade[] {
   const trades: LargeTrade[] = [];
   const types: LargeTrade["type"][] = ["Block", "Sweep", "Iceberg", "Above Ask"];
   const exchanges = ["CBOE", "NYSE", "NASDAQ", "BATS", "ISE"];
+  const expiries = ["2026-06-20", "2026-07-18", "2026-08-15", "2026-09-19", "2026-12-18"];
+  const basePrice = 50 + seededRandom(symbol.charCodeAt(0)) * 500;
 
   for (let i = 0; i < count; i++) {
     const seed = symbol.charCodeAt(0) * 100 + i * 17;
@@ -67,6 +73,11 @@ function generateMockTrades(symbol: string): LargeTrade[] {
     const minute = Math.floor(seededRandom(seed + 4) * 60);
     const typeIdx = Math.floor(seededRandom(seed + 5) * types.length);
 
+    const isCall = seededRandom(seed + 7) > 0.35;
+    const strike = Math.round(basePrice * (0.85 + seededRandom(seed + 8) * 0.3) / 5) * 5;
+    const expiry = expiries[Math.floor(seededRandom(seed + 9) * expiries.length)];
+    const expShort = expiry.replace(/-/g, "").slice(2);
+
     trades.push({
       time: `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`,
       direction: isBuy ? "Buy" : "Sell",
@@ -75,10 +86,15 @@ function generateMockTrades(symbol: string): LargeTrade[] {
       premium: Number(premium.toFixed(2)),
       type: types[typeIdx],
       exchange: exchanges[Math.floor(seededRandom(seed + 6) * exchanges.length)],
+      contract_code: `${symbol}${expShort}${isCall ? "C" : "P"}${strike}`,
+      option_type: isCall ? "C" : "P",
+      strike,
+      expiration: expiry,
     });
   }
 
-  return trades.sort((a, b) => b.premium - a.premium);
+  // Sort by time (chronological)
+  return trades.sort((a, b) => a.time.localeCompare(b.time));
 }
 
 function generateMockChain(symbol: string): ChainEntry[] {
@@ -204,6 +220,7 @@ export default function SymbolDetailPage() {
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
                   <TableHead>时间</TableHead>
+                  <TableHead>合约</TableHead>
                   <TableHead>方向</TableHead>
                   <TableHead className="text-right">成交价</TableHead>
                   <TableHead className="text-right">数量</TableHead>
@@ -216,6 +233,12 @@ export default function SymbolDetailPage() {
                 {trades.map((t, i) => (
                   <TableRow key={i} className="border-border">
                     <TableCell className="font-mono text-sm">{t.time}</TableCell>
+                    <TableCell>
+                      <div className="font-mono font-bold text-sm">{t.contract_code}</div>
+                      <div className="text-xs text-muted-foreground">
+                        ${t.strike} · {t.expiration}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
@@ -280,9 +303,6 @@ export default function SymbolDetailPage() {
                   >
                     <TableCell>
                       <div className="font-mono font-bold text-sm">{e.contract_code}</div>
-                      <div className="text-xs text-muted-foreground">
-                        ${e.strike} · {e.expiration}
-                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge
