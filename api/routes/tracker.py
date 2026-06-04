@@ -174,10 +174,16 @@ async def list_tracker(status: str | None = None) -> TrackerListResponse:
             prev_oi=prev["open_interest"] if prev else None,
             prev_volume=prev["volume"] if prev else None,
             prev_price=prev["last_price"] if prev else None,
-            oi_delta=(snap["open_interest"] - prev["open_interest"]) if snap and prev else None,
+            oi_delta=(snap["open_interest"] - prev["open_interest"])
+            if snap and prev
+            else None,
             volume_delta=(snap["volume"] - prev["volume"]) if snap and prev else None,
-            price_delta=(snap["last_price"] - prev["last_price"]) if snap and prev else None,
-            oi_delta_pct=_pct(snap["open_interest"] - prev["open_interest"], prev["open_interest"])
+            price_delta=(snap["last_price"] - prev["last_price"])
+            if snap and prev
+            else None,
+            oi_delta_pct=_pct(
+                snap["open_interest"] - prev["open_interest"], prev["open_interest"]
+            )
             if snap and prev and prev["open_interest"]
             else None,
             oi_30d_high=high_oi.get(code),
@@ -188,7 +194,9 @@ async def list_tracker(status: str | None = None) -> TrackerListResponse:
 
 
 @router.get("/tracker/{contract_code}/history", response_model=TrackerHistoryResponse)
-async def get_tracker_contract_history(contract_code: str, limit: int = 30) -> TrackerHistoryResponse:
+async def get_tracker_contract_history(
+    contract_code: str, limit: int = 30
+) -> TrackerHistoryResponse:
     """Get historical snapshots for a tracked contract."""
     history = get_tracker_history(contract_code, limit=limit)
     return TrackerHistoryResponse(
@@ -199,7 +207,9 @@ async def get_tracker_contract_history(contract_code: str, limit: int = 30) -> T
 
 
 @router.put("/tracker/{contract_code}", response_model=TrackerItem)
-async def patch_tracker(contract_code: str, request: UpdateTrackerRequest) -> TrackerItem:
+async def patch_tracker(
+    contract_code: str, request: UpdateTrackerRequest
+) -> TrackerItem:
     """Update notes, status, or alert threshold."""
     row = update_tracked_contract(
         contract_code=contract_code,
@@ -209,7 +219,10 @@ async def patch_tracker(contract_code: str, request: UpdateTrackerRequest) -> Tr
     )
     if row is None:
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=f"Contract {contract_code} not found")
+
+        raise HTTPException(
+            status_code=404, detail=f"Contract {contract_code} not found"
+        )
     return _row_to_item(row)
 
 
@@ -259,7 +272,9 @@ async def snapshot_tracker() -> dict:
                 snapshot_date=snapshot_date,
                 last_price=quote.get("last_price"),
                 volume=quote.get("volume"),
-                open_interest=quote.get("open_interest") if quote.get("open_interest") else None,
+                open_interest=quote.get("open_interest")
+                if quote.get("open_interest")
+                else None,
                 oi_change=0,
                 iv=quote.get("implied_volatility"),
                 iv_change_pct=0.0,
@@ -276,7 +291,9 @@ async def snapshot_tracker() -> dict:
 
     # Fallback to mock for any contracts that failed real-data lookup
     if failed:
-        mock_data = generate_options_snapshot(symbols, date.today(), num_contracts_per_symbol=50)
+        mock_data = generate_options_snapshot(
+            symbols, date.today(), num_contracts_per_symbol=50
+        )
         contract_map = {}
         for symbol, contracts_list in mock_data.items():
             for oc in contracts_list:

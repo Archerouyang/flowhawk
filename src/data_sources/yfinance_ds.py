@@ -16,7 +16,8 @@ def _contract_to_yf_symbol(contract_code: str) -> tuple[str, str] | None:
     yfinance format: SYMBOL + YYMMDD + C/P + STRIKE*1000  (e.g. MSFT260821C00500000)
     """
     import re
-    m = re.match(r'^([A-Z]+)(\d{6})([CP])(\d+(?:\.\d+)?)$', contract_code)
+
+    m = re.match(r"^([A-Z]+)(\d{6})([CP])(\d+(?:\.\d+)?)$", contract_code)
     if not m:
         return None
     symbol, date_str, opt_type, strike = m.groups()
@@ -127,9 +128,7 @@ class YFinanceDataSource:
             return pl.DataFrame()
         return pl.concat(frames, how="vertical_relaxed")
 
-    def get_option_contract(
-        self, contract_code: str
-    ) -> dict | None:
+    def get_option_contract(self, contract_code: str) -> dict | None:
         """Fetch real-time quote for a single option contract via yfinance.
 
         Returns dict with keys: last_price, bid, ask, volume, open_interest,

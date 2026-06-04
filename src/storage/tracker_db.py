@@ -23,7 +23,15 @@ def add_tracked_contract(
                 notes = excluded.notes,
                 alert_threshold = excluded.alert_threshold
             """,
-            (contract_code, underlying, option_type, strike, expiration, notes, alert_threshold),
+            (
+                contract_code,
+                underlying,
+                option_type,
+                strike,
+                expiration,
+                notes,
+                alert_threshold,
+            ),
         )
         conn.commit()
         row = conn.execute(
@@ -149,8 +157,20 @@ def save_tracker_snapshot(
                 volume_vs_avg = excluded.volume_vs_avg
             """,
             (
-                contract_code, snapshot_date, last_price, volume, open_interest, oi_change,
-                iv, iv_change_pct, delta, gamma, theta, vega, premium, volume_vs_avg,
+                contract_code,
+                snapshot_date,
+                last_price,
+                volume,
+                open_interest,
+                oi_change,
+                iv,
+                iv_change_pct,
+                delta,
+                gamma,
+                theta,
+                vega,
+                premium,
+                volume_vs_avg,
             ),
         )
         conn.commit()
@@ -221,7 +241,9 @@ def cleanup_old_tracker_snapshots(days: int = 90) -> int:
     """Remove snapshots older than N days. Returns rows deleted."""
     with get_conn() as conn:
         cur = conn.execute(
-            "DELETE FROM tracker_snapshots WHERE snapshot_date < date('now', '-{} days')".format(days)
+            "DELETE FROM tracker_snapshots WHERE snapshot_date < date('now', '-{} days')".format(
+                days
+            )
         )
         conn.commit()
         return cur.rowcount
