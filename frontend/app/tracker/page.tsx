@@ -301,20 +301,13 @@ export default function TrackerPage() {
         <Card className="border-border bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              OI 增长最多
+              今日有数据
             </CardTitle>
             <BarChart3 className="h-4 w-4 text-emerald-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-400">
-              {(() => {
-                const max = contracts.reduce(
-                  (best, c) =>
-                    (c.oi_delta || 0) > (best.oi_delta || 0) ? c : best,
-                  contracts[0]
-                );
-                return max ? `${max.underlying} ${max.oi_delta_pct?.toFixed(1)}%` : "-";
-              })()}
+            <div className="text-3xl font-bold text-emerald-400">
+              {contracts.filter((c) => c.last_price !== null).length}
             </div>
           </CardContent>
         </Card>
@@ -322,19 +315,17 @@ export default function TrackerPage() {
         <Card className="border-border bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              OI 下降最多
+              平均 OI 变化
             </CardTitle>
-            <TrendingDown className="h-4 w-4 text-rose-400" />
+            <TrendingDown className="h-4 w-4 text-amber-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-400">
+            <div className="text-3xl font-bold text-amber-400">
               {(() => {
-                const min = contracts.reduce(
-                  (best, c) =>
-                    (c.oi_delta || 0) < (best.oi_delta || 0) ? c : best,
-                  contracts[0]
-                );
-                return min ? `${min.underlying} ${min.oi_delta_pct?.toFixed(1)}%` : "-";
+                const active = contracts.filter((c) => c.oi_delta !== null);
+                if (!active.length) return "-";
+                const avg = active.reduce((s, c) => s + (c.oi_delta || 0), 0) / active.length;
+                return `${avg >= 0 ? "+" : ""}${avg.toFixed(0)}`;
               })()}
             </div>
           </CardContent>
