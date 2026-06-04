@@ -32,9 +32,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
+  Plus,
 } from "lucide-react";
 import {
   getTracker,
+  addTracker,
   removeTracker,
   getTrackerHistory,
   type TrackedContractWithSnapshot,
@@ -159,6 +161,50 @@ export default function TrackerPage() {
     );
   }
 
+  const [newCode, setNewCode] = useState("");
+  const [newNotes, setNewNotes] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  function parseContractCode(code: string) {
+    // Format: SYMBOL + YYMMDD + C/P + STRIKE
+    // e.g. AAPL261218C185
+    const m = code.match(/^([A-Z]+)(\d{6})([CP])(\d+(?:\.\d+)?)$/);
+    if (!m) return null;
+    const [, underlying, dateStr, optionType, strikeStr] = m;
+    const yy = dateStr.slice(0, 2);
+    const mm = dateStr.slice(2, 4);
+    const dd = dateStr.slice(4, 6);
+    return {
+      contract_code: code,
+      underlying,
+      option_type: optionType,
+      strike: parseFloat(strikeStr),
+      expiration: `20${yy}-${mm}-${dd}`,
+    };
+  }
+
+  async function handleAdd() {
+    const code = newCode.trim().toUpperCase();
+    if (!code) return;
+    const parsed = parseContractCode(code);
+    if (!parsed) {
+      alert("合约代码格式错误，示例: AAPL261218C185");
+      return;
+    }
+    setAdding(true);
+    try {
+      await addTracker({
+        ...parsed,
+        notes: newNotes.trim() || `手动添加追踪`,
+      });
+      setNewCode("");
+      setNewNotes("");
+      await loadTracker();
+    } finally {
+      setAdding(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -177,6 +223,50 @@ export default function TrackerPage() {
           刷新
         </Button>
       </div>
+
+      {/* Add Tracker Form */}
+      <Card className="border-border bg-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Plus className="h-4 w-4 text-emerald-400" />
+            添加追踪
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="合约代码，如 AAPL261218C185"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-mono placeholder:text-muted-foreground/50"
+                value={newCode}
+                onChange={(e) => setNewCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                格式: 标的 + 到期日(YYMMDD) + C/P + 行权价
+              </p>
+            </div>
+            <div className="flex-[2]">
+              <input
+                type="text"
+                placeholder="备注（可选），如 异常大单建仓"
+                className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm placeholder:text-muted-foreground/50"
+                value={newNotes}
+                onChange={(e) => setNewNotes(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              />
+            </div>
+            <Button
+              onClick={handleAdd}
+              disabled={adding || !newCode.trim()}
+              className="h-10 px-6"
+            >
+              {adding ? "添加中..." : "添加追踪"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
