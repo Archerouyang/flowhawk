@@ -11,11 +11,13 @@ import {
   FlaskConical,
   Activity,
   LayoutDashboard,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/tracker", label: "Tracker", icon: Bell },
   { href: "/dashboard/signals", label: "Signals", icon: Target },
   { href: "/screener", label: "Screener", icon: Search },
   { href: "/backtest", label: "Backtest", icon: LineChart },

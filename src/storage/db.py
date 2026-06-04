@@ -120,6 +120,47 @@ CREATE TABLE IF NOT EXISTS daily_rankings (
 
 CREATE INDEX IF NOT EXISTS idx_rankings_date ON daily_rankings(snapshot_date);
 CREATE INDEX IF NOT EXISTS idx_rankings_cat  ON daily_rankings(category);
+
+-- Tracker: user-watched contracts
+CREATE TABLE IF NOT EXISTS tracked_contracts (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    contract_code  TEXT NOT NULL UNIQUE,
+    underlying     TEXT NOT NULL,
+    option_type    TEXT NOT NULL,
+    strike         REAL NOT NULL,
+    expiration     TEXT NOT NULL,
+    added_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes          TEXT,
+    status         TEXT DEFAULT 'active',  -- 'active' | 'closed' | 'alerted'
+    alert_threshold REAL                    -- OI change % to trigger alert
+);
+
+CREATE INDEX IF NOT EXISTS idx_tracked_code ON tracked_contracts(contract_code);
+CREATE INDEX IF NOT EXISTS idx_tracked_status ON tracked_contracts(status);
+
+-- Tracker snapshots: daily data for tracked contracts
+CREATE TABLE IF NOT EXISTS tracker_snapshots (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    contract_code      TEXT NOT NULL,
+    snapshot_date      TEXT NOT NULL,
+    last_price         REAL,
+    volume             INTEGER,
+    open_interest      INTEGER,
+    oi_change          INTEGER,
+    iv                 REAL,
+    iv_change_pct      REAL,
+    delta              REAL,
+    gamma              REAL,
+    theta              REAL,
+    vega               REAL,
+    premium            REAL,
+    volume_vs_avg      REAL,
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(contract_code, snapshot_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tracker_snap_date ON tracker_snapshots(contract_code, snapshot_date);
+CREATE INDEX IF NOT EXISTS idx_tracker_snap_code ON tracker_snapshots(contract_code);
 """
 
 

@@ -727,3 +727,257 @@ export async function getRankingDates(): Promise<RankingDatesResponse> {
   }
   return get<RankingDatesResponse>("/rankings/history");
 }
+
+/* ─── Tracker API ─── */
+
+export interface TrackerItem {
+  contract_code: string;
+  underlying: string;
+  option_type: string;
+  strike: number;
+  expiration: string;
+  added_at: string;
+  notes: string;
+  status: string;
+  alert_threshold: number | null;
+}
+
+export interface TrackedContractWithSnapshot extends TrackerItem {
+  last_price: number | null;
+  volume: number | null;
+  open_interest: number | null;
+  oi_change: number | null;
+  iv: number | null;
+  delta: number | null;
+  gamma: number | null;
+  theta: number | null;
+  vega: number | null;
+  premium: number | null;
+  volume_vs_avg: number | null;
+  prev_oi: number | null;
+  prev_volume: number | null;
+  prev_price: number | null;
+  oi_delta: number | null;
+  volume_delta: number | null;
+  price_delta: number | null;
+  oi_delta_pct: number | null;
+}
+
+export interface TrackerListResponse {
+  count: number;
+  contracts: TrackedContractWithSnapshot[];
+}
+
+export interface TrackerSnapshot {
+  snapshot_date: string;
+  last_price: number;
+  volume: number;
+  open_interest: number;
+  oi_change: number;
+  iv: number;
+  iv_change_pct: number;
+  delta: number;
+  gamma: number;
+  theta: number;
+  vega: number;
+  premium: number;
+  volume_vs_avg: number;
+}
+
+export interface TrackerHistoryResponse {
+  contract_code: string;
+  count: number;
+  history: TrackerSnapshot[];
+}
+
+export async function getTracker(status?: string): Promise<TrackerListResponse> {
+  if (USE_MOCK) return mockTrackerList();
+  const query = status ? `?status=${status}` : "";
+  return get<TrackerListResponse>(`/tracker${query}`);
+}
+
+export async function addTracker(params: {
+  contract_code: string;
+  underlying: string;
+  option_type: string;
+  strike: number;
+  expiration: string;
+  notes?: string;
+}): Promise<TrackerItem> {
+  if (USE_MOCK) {
+    return {
+      contract_code: params.contract_code,
+      underlying: params.underlying,
+      option_type: params.option_type,
+      strike: params.strike,
+      expiration: params.expiration,
+      added_at: new Date().toISOString(),
+      notes: params.notes || "",
+      status: "active",
+      alert_threshold: null,
+    };
+  }
+  return post<TrackerItem>("/tracker", params);
+}
+
+export async function removeTracker(contract_code: string): Promise<{ removed: boolean; contract_code: string }> {
+  if (USE_MOCK) return { removed: true, contract_code };
+  const res = await fetch(`${API_BASE}/tracker/${contract_code}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<{ removed: boolean; contract_code: string }>;
+}
+
+export async function getTrackerHistory(contract_code: string, limit?: number): Promise<TrackerHistoryResponse> {
+  if (USE_MOCK) return mockTrackerHistory(contract_code);
+  const query = limit ? `?limit=${limit}` : "";
+  return get<TrackerHistoryResponse>(`/tracker/${contract_code}/history${query}`);
+}
+
+export async function updateTracker(
+  contract_code: string,
+  updates: { notes?: string; status?: string }
+): Promise<TrackerItem> {
+  if (USE_MOCK) {
+    return {
+      contract_code,
+      underlying: "MOCK",
+      option_type: "C",
+      strike: 100,
+      expiration: "2026-12-18",
+      added_at: new Date().toISOString(),
+      notes: updates.notes || "",
+      status: updates.status || "active",
+      alert_threshold: null,
+    };
+  }
+  const res = await fetch(`${API_BASE}/tracker/${contract_code}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<TrackerItem>;
+}
+
+/* ─── Tracker Mock Data ─── */
+
+const MOCK_TRACKER_CONTRACTS: TrackedContractWithSnapshot[] = [
+  {
+    contract_code: "AAPL261218C185",
+    underlying: "AAPL",
+    option_type: "C",
+    strike: 185,
+    expiration: "2026-12-18",
+    added_at: "2026-06-01T10:00:00Z",
+    notes: "异常大单，建仓信号",
+    status: "active",
+    alert_threshold: null,
+    last_price: 12.50,
+    volume: 34200,
+    open_interest: 12500,
+    oi_change: 1200,
+    iv: 0.32,
+    delta: 0.72,
+    gamma: 0.012,
+    theta: -0.035,
+    vega: 0.18,
+    premium: 42.75,
+    volume_vs_avg: 8.5,
+    prev_oi: 11300,
+    prev_volume: 28000,
+    prev_price: 11.80,
+    oi_delta: 1200,
+    volume_delta: 6200,
+    price_delta: 0.70,
+    oi_delta_pct: 10.62,
+  },
+  {
+    contract_code: "NVDA270115C130",
+    underlying: "NVDA",
+    option_type: "C",
+    strike: 130,
+    expiration: "2027-01-15",
+    added_at: "2026-06-02T14:30:00Z",
+    notes: "LEAP call 堆积，机构做多",
+    status: "active",
+    alert_threshold: null,
+    last_price: 22.00,
+    volume: 28900,
+    open_interest: 15600,
+    oi_change: 3400,
+    iv: 0.38,
+    delta: 0.75,
+    gamma: 0.015,
+    theta: -0.038,
+    vega: 0.25,
+    premium: 63.58,
+    volume_vs_avg: 12.3,
+    prev_oi: 12200,
+    prev_volume: 21000,
+    prev_price: 20.50,
+    oi_delta: 3400,
+    volume_delta: 7900,
+    price_delta: 1.50,
+    oi_delta_pct: 27.87,
+  },
+  {
+    contract_code: "SMH260605P550",
+    underlying: "SMH",
+    option_type: "P",
+    strike: 550,
+    expiration: "2026-06-05",
+    added_at: "2026-06-03T09:15:00Z",
+    notes: "Put wall，对冲芯片风险",
+    status: "alerted",
+    alert_threshold: -15.0,
+    last_price: 8.50,
+    volume: 15200,
+    open_interest: 22100,
+    oi_change: -1800,
+    iv: 0.28,
+    delta: -0.38,
+    gamma: 0.008,
+    theta: -0.055,
+    vega: 0.25,
+    premium: 12.92,
+    volume_vs_avg: 9.4,
+    prev_oi: 23900,
+    prev_volume: 18000,
+    prev_price: 9.20,
+    oi_delta: -1800,
+    volume_delta: -2800,
+    price_delta: -0.70,
+    oi_delta_pct: -7.53,
+  },
+];
+
+function mockTrackerList(): TrackerListResponse {
+  return { count: MOCK_TRACKER_CONTRACTS.length, contracts: MOCK_TRACKER_CONTRACTS };
+}
+
+function mockTrackerHistory(contract_code: string): TrackerHistoryResponse {
+  const base = MOCK_TRACKER_CONTRACTS.find((c) => c.contract_code === contract_code);
+  const today = new Date();
+  const history: TrackerSnapshot[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const noise = Math.sin(i * 1.5) * 0.1 + 1;
+    history.push({
+      snapshot_date: d.toISOString().split("T")[0],
+      last_price: (base?.last_price || 10) * noise,
+      volume: Math.floor((base?.volume || 10000) * (0.8 + Math.random() * 0.4)),
+      open_interest: Math.floor((base?.open_interest || 10000) * (0.9 + Math.random() * 0.2)),
+      oi_change: Math.floor((Math.random() - 0.5) * 2000),
+      iv: (base?.iv || 0.3) * noise,
+      iv_change_pct: (Math.random() - 0.5) * 5,
+      delta: base?.delta || 0.5,
+      gamma: base?.gamma || 0.01,
+      theta: base?.theta || -0.04,
+      vega: base?.vega || 0.2,
+      premium: (base?.premium || 10) * noise,
+      volume_vs_avg: (base?.volume_vs_avg || 5) * noise,
+    });
+  }
+  return { contract_code, count: history.length, history };
+}

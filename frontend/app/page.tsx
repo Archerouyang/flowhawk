@@ -26,7 +26,9 @@ import {
   Target,
   Calendar,
   History,
+  Bell,
 } from "lucide-react";
+import { addTracker } from "@/lib/api";
 import {
   getContractStats,
   getSignals,
@@ -101,10 +103,12 @@ function RankingTable({
   entries,
   onSelect,
   onSymbolClick,
+  onTrack,
 }: {
   entries: ContractEntry[];
   onSelect: (e: ContractEntry) => void;
   onSymbolClick?: (symbol: string) => void;
+  onTrack?: (e: ContractEntry) => void;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -122,6 +126,7 @@ function RankingTable({
             <TableHead className="text-right">LEAP C/P</TableHead>
             <TableHead className="text-right">Delta</TableHead>
             <TableHead>异动说明</TableHead>
+            <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -180,6 +185,18 @@ function RankingTable({
               </TableCell>
               <TableCell className="max-w-xs text-xs text-muted-foreground truncate">
                 {entry.narrative}
+              </TableCell>
+              <TableCell>
+                <button
+                  className="rounded-md p-1.5 text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTrack?.(entry);
+                  }}
+                  title="添加到追踪器"
+                >
+                  <Bell className="h-4 w-4" />
+                </button>
               </TableCell>
             </TableRow>
           ))}
@@ -265,6 +282,23 @@ export default function DashboardPage() {
 
   const handleSymbolClick = (symbol: string) => {
     router.push(`/dashboard/screener/${symbol}`);
+  };
+
+  const handleTrack = async (entry: ContractEntry) => {
+    try {
+      await addTracker({
+        contract_code: entry.contract_code,
+        underlying: entry.underlying,
+        option_type: entry.option_type,
+        strike: entry.strike,
+        expiration: entry.expiration,
+        notes: `Added from ranking — ${entry.narrative.slice(0, 50)}`,
+      });
+      // Simple toast would go here; for now just rely on page nav
+      router.push("/tracker");
+    } catch (err) {
+      console.error("Failed to add tracker:", err);
+    }
   };
 
   if (loading) {
@@ -460,7 +494,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <RankingTable entries={stats[cat]} onSelect={handleSelect} onSymbolClick={handleSymbolClick} />
+                <RankingTable entries={stats[cat]} onSelect={handleSelect} onSymbolClick={handleSymbolClick} onTrack={handleTrack} />
               </CardContent>
             </Card>
           </TabsContent>
