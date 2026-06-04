@@ -6,6 +6,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from src.data_sources.mock import generate_options_snapshot
+from src.data_sources.yfinance_ds import get_yfinance
+from src.data_sources.longbridge_ds import LongbridgeDataSource
 from src.storage.tracker_db import (
     add_tracked_contract,
     get_tracked_contracts,
@@ -16,6 +18,7 @@ from src.storage.tracker_db import (
     get_latest_snapshots,
     get_previous_day_snapshots,
     save_tracker_snapshot,
+    get_30d_high_oi,
 )
 
 router = APIRouter()
@@ -53,16 +56,16 @@ class SnapshotData(BaseModel):
     snapshot_date: str
     last_price: float
     volume: int
-    open_interest: int
-    oi_change: int
-    iv: float
-    iv_change_pct: float
-    delta: float
-    gamma: float
-    theta: float
-    vega: float
-    premium: float
-    volume_vs_avg: float
+    open_interest: int | None
+    oi_change: int | None
+    iv: float | None
+    iv_change_pct: float | None
+    delta: float | None
+    gamma: float | None
+    theta: float | None
+    vega: float | None
+    premium: float | None
+    volume_vs_avg: float | None
 
 
 class TrackedContractWithSnapshot(BaseModel):
@@ -95,6 +98,7 @@ class TrackedContractWithSnapshot(BaseModel):
     volume_delta: int | None
     price_delta: float | None
     oi_delta_pct: float | None
+    oi_30d_high: int | None
 
 
 class TrackerListResponse(BaseModel):
@@ -138,6 +142,7 @@ async def list_tracker(status: str | None = None) -> TrackerListResponse:
 
     latest = get_latest_snapshots(codes)
     previous = get_previous_day_snapshots(codes)
+    high_oi = get_30d_high_oi(codes)
 
     result = []
     for c in contracts:
@@ -177,6 +182,7 @@ async def list_tracker(status: str | None = None) -> TrackerListResponse:
             oi_delta_pct=_pct(snap["open_interest"] - prev["open_interest"], prev["open_interest"])
             if snap and prev and prev["open_interest"]
             else None,
+            oi_30d_high=high_oi.get(code),
         )
         result.append(entry)
 
@@ -211,46 +217,102 @@ async def patch_tracker(contract_code: str, request: UpdateTrackerRequest) -> Tr
 
 @router.post("/tracker/snapshot")
 async def snapshot_tracker() -> dict:
-    """Manually trigger a snapshot for all tracked contracts (uses mock data)."""
+    """Manually trigger a snapshot for all tracked contracts.
+
+    Tries real data sources first (yfinance for price/volume, Longbridge for
+    validation), falls back to mock data if both fail.
+
+    # TODO(debt): yfinance does not provide reliable OI or Greeks.
+    #   When Theta Data or another full-featured option source is available,
+    #   replace yfinance.get_option_contract with that source.
+    #   — 2026-06-04
+    """
     snapshot_date = date.today().isoformat()
     contracts = get_tracked_contracts(status="active")
     if not contracts:
         return {"date": snapshot_date, "snapshots": 0}
 
-    symbols = list({c["underlying"] for c in contracts})
-    mock_data = generate_options_snapshot(symbols, date.today(), num_contracts_per_symbol=50)
+    yf = get_yfinance()
+    lb = LongbridgeDataSource()
 
-    # Build lookup by contract code
-    contract_map = {}
-    for symbol, contracts_list in mock_data.items():
-        for oc in contracts_list:
-            code = _make_code(oc.symbol, oc.expiration, oc.option_type, oc.strike)
-            contract_map[code] = oc
+    # Pre-fetch stock prices for premium calculation
+    symbols = list({c["underlying"] for c in contracts})
+    stock_prices: dict[str, float | None] = {}
+    for sym in symbols:
+        stock_prices[sym] = yf.get_stock_price(sym)
 
     saved = 0
+    failed: list[str] = []
+
     for c in contracts:
         code = c["contract_code"]
-        oc = contract_map.get(code)
-        if oc:
+        underlying = c["underlying"]
+
+        # Try real data first: yfinance option quote
+        quote = yf.get_option_contract(code)
+
+        if quote:
+            # Compute premium (notional value) in millions
+            stock_price = stock_prices.get(underlying) or 0
+            notional = stock_price * (quote.get("volume", 0) or 0) * 100
+            premium = round(notional / 1_000_000, 2) if notional else 0.0
+
             save_tracker_snapshot(
                 contract_code=code,
                 snapshot_date=snapshot_date,
-                last_price=oc.last_price,
-                volume=oc.volume,
-                open_interest=oc.open_interest,
-                oi_change=0,  # Would need previous day data to compute
-                iv=oc.implied_volatility,
+                last_price=quote.get("last_price"),
+                volume=quote.get("volume"),
+                open_interest=quote.get("open_interest") if quote.get("open_interest") else None,
+                oi_change=0,
+                iv=quote.get("implied_volatility"),
                 iv_change_pct=0.0,
-                delta=oc.delta,
-                gamma=oc.gamma,
-                theta=oc.theta,
-                vega=oc.vega,
-                premium=oc.premium,
-                volume_vs_avg=round(oc.volume / max(oc.open_interest * 0.1, 1), 1),
+                delta=None,
+                gamma=None,
+                theta=None,
+                vega=None,
+                premium=premium,
+                volume_vs_avg=0.0,
             )
             saved += 1
+        else:
+            failed.append(code)
 
-    return {"date": snapshot_date, "snapshots": saved, "total_tracked": len(contracts)}
+    # Fallback to mock for any contracts that failed real-data lookup
+    if failed:
+        mock_data = generate_options_snapshot(symbols, date.today(), num_contracts_per_symbol=50)
+        contract_map = {}
+        for symbol, contracts_list in mock_data.items():
+            for oc in contracts_list:
+                mc = _make_code(oc.symbol, oc.expiration, oc.option_type, oc.strike)
+                contract_map[mc] = oc
+        for code in failed:
+            oc = contract_map.get(code)
+            if oc:
+                save_tracker_snapshot(
+                    contract_code=code,
+                    snapshot_date=snapshot_date,
+                    last_price=oc.last_price,
+                    volume=oc.volume,
+                    open_interest=oc.open_interest,
+                    oi_change=0,
+                    iv=oc.implied_volatility,
+                    iv_change_pct=0.0,
+                    delta=oc.delta,
+                    gamma=oc.gamma,
+                    theta=oc.theta,
+                    vega=oc.vega,
+                    premium=oc.premium,
+                    volume_vs_avg=round(oc.volume / max(oc.open_interest * 0.1, 1), 1),
+                )
+                saved += 1
+
+    return {
+        "date": snapshot_date,
+        "snapshots": saved,
+        "total_tracked": len(contracts),
+        "real_data": saved - len(failed) if failed else saved,
+        "mock_fallback": len(failed),
+    }
 
 
 def _make_code(symbol: str, expiration: date, option_type: str, strike: float) -> str:

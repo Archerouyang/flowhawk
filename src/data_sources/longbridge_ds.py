@@ -98,3 +98,23 @@ class LongbridgeDataSource:
             }
             for item in data
         ]
+
+    def verify_contract_exists(
+        self, symbol: str, expiry: str, strike: float, option_type: str
+    ) -> bool:
+        """Verify an option contract exists via Longbridge chain API.
+
+        # TODO(debt): Longbridge account lacks option quote permission.
+        #   This only validates existence via chain, not price/OI.
+        #   When quote access is granted, use option quote for full validation.
+        #   — 2026-06-04
+        """
+        strikes = self.get_option_strikes(symbol, expiry)
+        if not strikes:
+            return False
+        strike_str = str(int(strike)) if strike == int(strike) else str(strike)
+        for item in strikes:
+            if str(item.get("strike", "")) == strike_str:
+                key = "call_symbol" if option_type == "C" else "put_symbol"
+                return bool(item.get(key, ""))
+        return False

@@ -10,6 +10,65 @@
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 const API_BASE = "/api/v1";
 
+/* ─── API Response Cache ─── */
+
+interface CacheEntry<T> {
+  data: T;
+  ts: number;
+}
+
+const API_CACHE = new Map<string, CacheEntry<unknown>>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function cacheKey(path: string, body?: unknown): string {
+  if (body) return `${path}:${JSON.stringify(body)}`;
+  return path;
+}
+
+function getCached<T>(key: string): T | undefined {
+  const hit = API_CACHE.get(key);
+  if (!hit) return undefined;
+  if (Date.now() - hit.ts > CACHE_TTL_MS) {
+    API_CACHE.delete(key);
+    return undefined;
+  }
+  return hit.data as T;
+}
+
+function setCached<T>(key: string, data: T): void {
+  API_CACHE.set(key, { data, ts: Date.now() });
+}
+
+/** Invalidate cache entries. Pass a key prefix to invalidate matching entries, or omit to clear all. */
+export function invalidateCache(prefix?: string): void {
+  if (!prefix) {
+    API_CACHE.clear();
+    return;
+  }
+  for (const key of API_CACHE.keys()) {
+    if (key.startsWith(prefix)) API_CACHE.delete(key);
+  }
+}
+
+async function cachedGet<T>(path: string): Promise<T> {
+  const key = cacheKey(path);
+  const hit = getCached<T>(key);
+  if (hit !== undefined) return hit;
+  const data = await get<T>(path);
+  setCached(key, data);
+  return data;
+}
+
+async function cachedPost<T>(path: string, body: unknown): Promise<T> {
+  const key = cacheKey(path, body);
+  const hit = getCached<T>(key);
+  if (hit !== undefined) return hit;
+  const data = await post<T>(path, body);
+  setCached(key, data);
+  return data;
+}
+
+
 export interface ScreenParams {
   symbols: string[];
   min_voi_ratio?: number;
@@ -478,7 +537,7 @@ export async function screen(params: ScreenParams): Promise<ScreenResponse> {
 
 export async function getSignals(symbols?: string[]): Promise<SignalResponse> {
   if (USE_MOCK) return mockSignals();
-  return post<SignalResponse>("/signals", symbols ? { symbols } : {});
+  return cachedPost<SignalResponse>("/signals", symbols ? { symbols } : {});
 }
 
 export async function getDashboard(): Promise<DashboardSummary> {
@@ -688,12 +747,12 @@ function mockContractStats(): ContractDashboardStats {
 
 export async function getContractRanking(category: string = "dragon_tiger"): Promise<ContractRankingResponse> {
   if (USE_MOCK) return mockContractRanking(category);
-  return post<ContractRankingResponse>("/ranking", { category });
+  return cachedPost<ContractRankingResponse>("/ranking", { category });
 }
 
 export async function getContractStats(): Promise<ContractDashboardStats> {
   if (USE_MOCK) return mockContractStats();
-  return get<ContractDashboardStats>("/dashboard");
+  return cachedGet<ContractDashboardStats>("/dashboard");
 }
 
 /* ─── Historical Rankings ─── */
@@ -717,7 +776,7 @@ export async function getHistoricalRanking(
     // In mock mode, always return today's data regardless of date
     return mockContractRanking(category) as unknown as HistoricalRankingResponse;
   }
-  return get<HistoricalRankingResponse>(`/rankings/history/${snapshotDate}?category=${category}`);
+  return cachedGet<HistoricalRankingResponse>(`/rankings/history/${snapshotDate}?category=${category}`);
 }
 
 export async function getRankingDates(): Promise<RankingDatesResponse> {
@@ -725,7 +784,7 @@ export async function getRankingDates(): Promise<RankingDatesResponse> {
     const today = new Date().toISOString().split("T")[0];
     return { dates: [today] };
   }
-  return get<RankingDatesResponse>("/rankings/history");
+  return cachedGet<RankingDatesResponse>("/rankings/history");
 }
 
 /* ─── Tracker API ─── */
@@ -761,6 +820,7 @@ export interface TrackedContractWithSnapshot extends TrackerItem {
   volume_delta: number | null;
   price_delta: number | null;
   oi_delta_pct: number | null;
+  oi_30d_high: number | null;
 }
 
 export interface TrackerListResponse {
@@ -772,16 +832,16 @@ export interface TrackerSnapshot {
   snapshot_date: string;
   last_price: number;
   volume: number;
-  open_interest: number;
-  oi_change: number;
-  iv: number;
-  iv_change_pct: number;
-  delta: number;
-  gamma: number;
-  theta: number;
-  vega: number;
-  premium: number;
-  volume_vs_avg: number;
+  open_interest: number | null;
+  oi_change: number | null;
+  iv: number | null;
+  iv_change_pct: number | null;
+  delta: number | null;
+  gamma: number | null;
+  theta: number | null;
+  vega: number | null;
+  premium: number | null;
+  volume_vs_avg: number | null;
 }
 
 export interface TrackerHistoryResponse {
@@ -793,7 +853,7 @@ export interface TrackerHistoryResponse {
 export async function getTracker(status?: string): Promise<TrackerListResponse> {
   if (USE_MOCK) return mockTrackerList();
   const query = status ? `?status=${status}` : "";
-  return get<TrackerListResponse>(`/tracker${query}`);
+  return cachedGet<TrackerListResponse>(`/tracker${query}`);
 }
 
 export async function addTracker(params: {
@@ -805,7 +865,7 @@ export async function addTracker(params: {
   notes?: string;
 }): Promise<TrackerItem> {
   if (USE_MOCK) {
-    return {
+    const item: TrackedContractWithSnapshot = {
       contract_code: params.contract_code,
       underlying: params.underlying,
       option_type: params.option_type,
@@ -815,13 +875,42 @@ export async function addTracker(params: {
       notes: params.notes || "",
       status: "active",
       alert_threshold: null,
+      last_price: null,
+      volume: null,
+      open_interest: null,
+      oi_change: null,
+      iv: null,
+      delta: null,
+      gamma: null,
+      theta: null,
+      vega: null,
+      premium: null,
+      volume_vs_avg: null,
+      prev_oi: null,
+      prev_volume: null,
+      prev_price: null,
+      oi_delta: null,
+      volume_delta: null,
+      price_delta: null,
+      oi_delta_pct: null,
+      oi_30d_high: null,
     };
+    MOCK_TRACKER_CONTRACTS.push(item);
+    saveMockTrackerData(MOCK_TRACKER_CONTRACTS);
+    return item;
   }
   return post<TrackerItem>("/tracker", params);
 }
 
 export async function removeTracker(contract_code: string): Promise<{ removed: boolean; contract_code: string }> {
-  if (USE_MOCK) return { removed: true, contract_code };
+  if (USE_MOCK) {
+    const idx = MOCK_TRACKER_CONTRACTS.findIndex((c) => c.contract_code === contract_code);
+    if (idx >= 0) {
+      MOCK_TRACKER_CONTRACTS.splice(idx, 1);
+      saveMockTrackerData(MOCK_TRACKER_CONTRACTS);
+    }
+    return { removed: idx >= 0, contract_code };
+  }
   const res = await fetch(`${API_BASE}/tracker/${contract_code}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
   return res.json() as Promise<{ removed: boolean; contract_code: string }>;
@@ -861,7 +950,9 @@ export async function updateTracker(
 
 /* ─── Tracker Mock Data ─── */
 
-const MOCK_TRACKER_CONTRACTS: TrackedContractWithSnapshot[] = [
+const MOCK_TRACKER_KEY = "flowhawk_mock_tracker";
+
+const DEFAULT_MOCK_TRACKER_CONTRACTS: TrackedContractWithSnapshot[] = [
   {
     contract_code: "AAPL261218C185",
     underlying: "AAPL",
@@ -890,6 +981,7 @@ const MOCK_TRACKER_CONTRACTS: TrackedContractWithSnapshot[] = [
     volume_delta: 6200,
     price_delta: 0.70,
     oi_delta_pct: 10.62,
+    oi_30d_high: 13000,
   },
   {
     contract_code: "NVDA270115C130",
@@ -919,6 +1011,7 @@ const MOCK_TRACKER_CONTRACTS: TrackedContractWithSnapshot[] = [
     volume_delta: 7900,
     price_delta: 1.50,
     oi_delta_pct: 27.87,
+    oi_30d_high: 16000,
   },
   {
     contract_code: "SMH260605P550",
@@ -948,8 +1041,32 @@ const MOCK_TRACKER_CONTRACTS: TrackedContractWithSnapshot[] = [
     volume_delta: -2800,
     price_delta: -0.70,
     oi_delta_pct: -7.53,
+    oi_30d_high: 25000,
   },
 ];
+
+function loadMockTrackerData(): TrackedContractWithSnapshot[] {
+  if (typeof window === "undefined") return DEFAULT_MOCK_TRACKER_CONTRACTS;
+  try {
+    const raw = localStorage.getItem(MOCK_TRACKER_KEY);
+    if (raw) return JSON.parse(raw);
+    localStorage.setItem(MOCK_TRACKER_KEY, JSON.stringify(DEFAULT_MOCK_TRACKER_CONTRACTS));
+    return DEFAULT_MOCK_TRACKER_CONTRACTS;
+  } catch {
+    return DEFAULT_MOCK_TRACKER_CONTRACTS;
+  }
+}
+
+function saveMockTrackerData(data: TrackedContractWithSnapshot[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(MOCK_TRACKER_KEY, JSON.stringify(data));
+  } catch {
+    // ignore
+  }
+}
+
+let MOCK_TRACKER_CONTRACTS: TrackedContractWithSnapshot[] = loadMockTrackerData();
 
 function mockTrackerList(): TrackerListResponse {
   return { count: MOCK_TRACKER_CONTRACTS.length, contracts: MOCK_TRACKER_CONTRACTS };

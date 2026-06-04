@@ -27,12 +27,14 @@ import {
   Calendar,
   History,
   Bell,
+  Search,
 } from "lucide-react";
 import { addTracker } from "@/lib/api";
 import {
   getContractStats,
   getSignals,
   getHistoricalRanking,
+  invalidateCache,
   type ContractEntry,
   type ContractDashboardStats,
   type ClassifiedSignal,
@@ -123,6 +125,7 @@ function RankingTable({
             <TableHead className="text-right">成交量</TableHead>
             <TableHead className="text-right">量能</TableHead>
             <TableHead className="text-right">成交额</TableHead>
+            <TableHead className="text-right">OI</TableHead>
             <TableHead className="text-right">LEAP C/P</TableHead>
             <TableHead className="text-right">Delta</TableHead>
             <TableHead>异动说明</TableHead>
@@ -133,21 +136,18 @@ function RankingTable({
           {entries.map((entry) => (
             <TableRow
               key={entry.contract_code}
-              className="border-border cursor-pointer hover:bg-muted/30"
-              onClick={() => onSelect(entry)}
+              className="border-border hover:bg-muted/30"
             >
               <TableCell className="font-mono text-muted-foreground">
                 {entry.rank}
               </TableCell>
               <TableCell>
                 <div className="font-mono font-bold">{entry.contract_code}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground"
+                >
                   <button
                     className="hover:text-blue-400 hover:underline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSymbolClick?.(entry.underlying);
-                    }}
+                    onClick={() => onSymbolClick?.(entry.underlying)}
                   >
                     {entry.underlying}
                   </button>
@@ -172,6 +172,9 @@ function RankingTable({
                 ${entry.volume.premium.toFixed(1)}M
               </TableCell>
               <TableCell className="text-right font-mono">
+                {entry.oi.total.toLocaleString()}
+              </TableCell>
+              <TableCell className="text-right font-mono">
                 {entry.leap_cp_ratio > 50 ? (
                   <span className="text-emerald-400">{entry.leap_cp_ratio.toFixed(1)}</span>
                 ) : entry.leap_cp_ratio > 2 ? (
@@ -187,16 +190,22 @@ function RankingTable({
                 {entry.narrative}
               </TableCell>
               <TableCell>
-                <button
-                  className="rounded-md p-1.5 text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTrack?.(entry);
-                  }}
-                  title="添加到追踪器"
-                >
-                  <Bell className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-0.5">
+                  <button
+                    className="rounded-md p-1.5 text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                    onClick={() => onSelect(entry)}
+                    title="查看分析"
+                  >
+                    <Target className="h-4 w-4" />
+                  </button>
+                  <button
+                    className="rounded-md p-1.5 text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                    onClick={() => onTrack?.(entry)}
+                    title="添加到追踪器"
+                  >
+                    <Bell className="h-4 w-4" />
+                  </button>
+                </div>
               </TableCell>
             </TableRow>
           ))}
@@ -216,48 +225,61 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<ContractDashboardStats | null>(null);
   const [signals, setSignals] = useState<ClassifiedSignal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const today = new Date().toISOString().split("T")[0];
   const isHistorical = selectedDate && selectedDate !== today;
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
 
     if (isHistorical) {
-      // Load historical data for all categories
       Promise.all([
         getHistoricalRanking(selectedDate, "dragon_tiger"),
         getHistoricalRanking(selectedDate, "individual"),
         getHistoricalRanking(selectedDate, "etf"),
         getHistoricalRanking(selectedDate, "premium"),
         getSignals(),
-      ]).then(([dt, ind, etf, prem, sig]) => {
-        if (cancelled) return;
-        setStats({
-          date: selectedDate,
-          total_contracts: dt.total + ind.total + etf.total,
-          total_volume: dt.rankings.reduce((s, e) => s + e.volume.total, 0)
-            + ind.rankings.reduce((s, e) => s + e.volume.total, 0)
-            + etf.rankings.reduce((s, e) => s + e.volume.total, 0),
-          total_premium: dt.rankings.reduce((s, e) => s + e.volume.premium, 0)
-            + ind.rankings.reduce((s, e) => s + e.volume.premium, 0)
-            + etf.rankings.reduce((s, e) => s + e.volume.premium, 0),
-          call_put_ratio: 2.04,
-          dragon_tiger: dt.rankings,
-          individual: ind.rankings,
-          etf: etf.rankings,
-          premium: prem.rankings,
+      ])
+        .then(([dt, ind, etf, prem, sig]) => {
+          if (cancelled) return;
+          setStats({
+            date: selectedDate,
+            total_contracts: dt.total + ind.total + etf.total,
+            total_volume: dt.rankings.reduce((s, e) => s + e.volume.total, 0)
+              + ind.rankings.reduce((s, e) => s + e.volume.total, 0)
+              + etf.rankings.reduce((s, e) => s + e.volume.total, 0),
+            total_premium: dt.rankings.reduce((s, e) => s + e.volume.premium, 0)
+              + ind.rankings.reduce((s, e) => s + e.volume.premium, 0)
+              + etf.rankings.reduce((s, e) => s + e.volume.premium, 0),
+            call_put_ratio: 2.04,
+            dragon_tiger: dt.rankings,
+            individual: ind.rankings,
+            etf: etf.rankings,
+            premium: prem.rankings,
+          });
+          setSignals(sig.signals);
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setError(err instanceof Error ? err.message : "加载失败");
+          setLoading(false);
         });
-        setSignals(sig.signals);
-        setLoading(false);
-      });
     } else {
-      Promise.all([getContractStats(), getSignals()]).then(([s, sig]) => {
-        if (cancelled) return;
-        setStats(s);
-        setSignals(sig.signals);
-        setLoading(false);
-      });
+      Promise.all([getContractStats(), getSignals()])
+        .then(([s, sig]) => {
+          if (cancelled) return;
+          setStats(s);
+          setSignals(sig.signals);
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setError(err instanceof Error ? err.message : "加载失败");
+          setLoading(false);
+        });
     }
 
     return () => { cancelled = true; };
@@ -269,11 +291,18 @@ export default function DashboardPage() {
       return;
     }
     setLoading(true);
-    Promise.all([getContractStats(), getSignals()]).then(([s, sig]) => {
-      setStats(s);
-      setSignals(sig.signals);
-      setLoading(false);
-    });
+    setError(null);
+    invalidateCache(); // clear all cache on manual refresh
+    Promise.all([getContractStats(), getSignals()])
+      .then(([s, sig]) => {
+        setStats(s);
+        setSignals(sig.signals);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "加载失败");
+        setLoading(false);
+      });
   };
 
   const handleSelect = (entry: ContractEntry) => {
@@ -305,6 +334,18 @@ export default function DashboardPage() {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-muted-foreground">Loading rankings...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4">
+        <div className="text-red-400 font-medium">加载失败: {error}</div>
+        <Button variant="outline" size="sm" onClick={handleRefresh}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          重试
+        </Button>
       </div>
     );
   }

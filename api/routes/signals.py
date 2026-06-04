@@ -1,5 +1,6 @@
 """Trade signals API routes."""
 
+import asyncio
 import re
 from datetime import date
 
@@ -126,18 +127,21 @@ async def generate_signals(request: SignalRequest) -> SignalResponse:
     anomaly_df = OptionsAnomalyScreener().screen(snapshot)
     meta_map = generate_symbol_meta(request.symbols)
 
-    # Fetch Longbridge real-time data for each symbol
+    # Fetch Longbridge real-time data for each symbol (parallelized)
     lb = LongbridgeDataSource()
-    lb_data: dict[str, dict] = {}
-    for sym in request.symbols:
-        vol = lb.get_option_volume(f"{sym}.US")
-        quote = lb.get_quote(f"{sym}.US")
-        lb_data[sym] = {
+
+    async def _fetch_symbol(sym: str) -> tuple[str, dict]:
+        vol = await asyncio.to_thread(lb.get_option_volume, f"{sym}.US")
+        quote = await asyncio.to_thread(lb.get_quote, f"{sym}.US")
+        return sym, {
             "call_volume": vol.call_volume if vol else 0,
             "put_volume": vol.put_volume if vol else 0,
             "stock_change_pct": quote.change_pct if quote else 0.0,
             "stock_price": quote.price if quote else 0.0,
         }
+
+    lb_results = await asyncio.gather(*[_fetch_symbol(s) for s in request.symbols])
+    lb_data: dict[str, dict] = {sym: data for sym, data in lb_results}
 
     # Classify anomalies into signal types
     classifier = SignalClassifier(history_symbols=set())

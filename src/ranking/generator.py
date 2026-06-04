@@ -177,7 +177,7 @@ class RankingGenerator:
             exp_code = exp_str[2:4] + exp_str[5:7] + exp_str[8:10]
 
         option_type = row["option_type"]
-        contract_code = f"{sym}{exp_code}{option_type}{strike:g}"
+        contract_code = f"{sym}{exp_code}{option_type}{int(strike)}"
 
         last_price = float(row["last_price"])
         bid = float(row["bid"])

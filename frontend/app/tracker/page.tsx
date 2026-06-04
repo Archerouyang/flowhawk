@@ -19,7 +19,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Bell,
   TrendingUp,
@@ -33,12 +40,14 @@ import {
   ArrowDownRight,
   Minus,
   Plus,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   getTracker,
   addTracker,
   removeTracker,
   getTrackerHistory,
+  invalidateCache,
   type TrackedContractWithSnapshot,
   type TrackerSnapshot,
 } from "@/lib/api";
@@ -123,6 +132,66 @@ export default function TrackerPage() {
   const [history, setHistory] = useState<TrackerSnapshot[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  const [newCode, setNewCode] = useState("");
+  const [newNotes, setNewNotes] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  // ── Column visibility ──
+  type ColumnKey =
+    | "option_type"
+    | "status"
+    | "last_price"
+    | "price_delta"
+    | "volume"
+    | "volume_delta"
+    | "open_interest"
+    | "prev_oi"
+    | "oi_delta"
+    | "oi_delta_pct"
+    | "oi_30d_high"
+    | "notes";
+
+  const COLUMN_STORAGE_KEY = "flowhawk_tracker_columns";
+
+  const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
+    { key: "option_type", label: "Type" },
+    { key: "status", label: "状态" },
+    { key: "last_price", label: "最新价" },
+    { key: "price_delta", label: "价变" },
+    { key: "volume", label: "成交量" },
+    { key: "volume_delta", label: "量变" },
+    { key: "open_interest", label: "OI" },
+    { key: "prev_oi", label: "昨日OI" },
+    { key: "oi_delta", label: "OI变化" },
+    { key: "oi_delta_pct", label: "OI变化%" },
+    { key: "oi_30d_high", label: "30天最高OI" },
+    { key: "notes", label: "备注" },
+  ];
+
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(() => {
+    if (typeof window === "undefined")
+      return new Set(ALL_COLUMNS.map((c) => c.key));
+    try {
+      const raw = localStorage.getItem(COLUMN_STORAGE_KEY);
+      if (raw) return new Set(JSON.parse(raw) as ColumnKey[]);
+    } catch {
+      /* ignore */
+    }
+    return new Set(ALL_COLUMNS.map((c) => c.key));
+  });
+
+  function toggleColumn(key: ColumnKey) {
+    setVisibleColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }
+
+  const isVisible = (key: ColumnKey) => visibleColumns.has(key);
+
   useEffect(() => {
     loadTracker();
   }, []);
@@ -160,10 +229,6 @@ export default function TrackerPage() {
       </div>
     );
   }
-
-  const [newCode, setNewCode] = useState("");
-  const [newNotes, setNewNotes] = useState("");
-  const [adding, setAdding] = useState(false);
 
   function parseContractCode(code: string) {
     // Format: SYMBOL + YYMMDD + C/P + STRIKE
@@ -218,7 +283,7 @@ export default function TrackerPage() {
             持续追踪异常仓位 — {contracts.length} 个合约
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadTracker}>
+        <Button variant="outline" size="sm" onClick={() => { invalidateCache(); loadTracker(); }}>
           <Activity className="mr-2 h-4 w-4" />
           刷新
         </Button>
@@ -269,7 +334,7 @@ export default function TrackerPage() {
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-border bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -312,33 +377,38 @@ export default function TrackerPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              平均 OI 变化
-            </CardTitle>
-            <TrendingDown className="h-4 w-4 text-amber-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-amber-400">
-              {(() => {
-                const active = contracts.filter((c) => c.oi_delta !== null);
-                if (!active.length) return "-";
-                const avg = active.reduce((s, c) => s + (c.oi_delta || 0), 0) / active.length;
-                return `${avg >= 0 ? "+" : ""}${avg.toFixed(0)}`;
-              })()}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Tracker Table */}
       <Card className="border-border bg-card">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Eye className="h-4 w-4 text-blue-400" />
             追踪列表
           </CardTitle>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="outline" size="sm">
+                  <SlidersHorizontal className="mr-2 h-4 w-4" />
+                  列设置
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>显示列</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {ALL_COLUMNS.map((col) => (
+                <DropdownMenuCheckboxItem
+                  key={col.key}
+                  checked={isVisible(col.key)}
+                  onCheckedChange={() => toggleColumn(col.key)}
+                >
+                  {col.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardHeader>
         <CardContent className="p-0">
           {contracts.length === 0 ? (
@@ -353,16 +423,18 @@ export default function TrackerPage() {
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead>合约</TableHead>
-                    <TableHead className="w-16">Type</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead className="text-right">最新价</TableHead>
-                    <TableHead className="text-right">价变</TableHead>
-                    <TableHead className="text-right">成交量</TableHead>
-                    <TableHead className="text-right">量变</TableHead>
-                    <TableHead className="text-right">OI</TableHead>
-                    <TableHead className="text-right">OI 变化</TableHead>
-                    <TableHead className="text-right">OI 变化%</TableHead>
-                    <TableHead>备注</TableHead>
+                    {isVisible("option_type") && <TableHead className="w-16">Type</TableHead>}
+                    {isVisible("status") && <TableHead>状态</TableHead>}
+                    {isVisible("last_price") && <TableHead className="text-right">最新价</TableHead>}
+                    {isVisible("price_delta") && <TableHead className="text-right">价变</TableHead>}
+                    {isVisible("volume") && <TableHead className="text-right">成交量</TableHead>}
+                    {isVisible("volume_delta") && <TableHead className="text-right">量变</TableHead>}
+                    {isVisible("open_interest") && <TableHead className="text-right">OI</TableHead>}
+                    {isVisible("prev_oi") && <TableHead className="text-right">昨日OI</TableHead>}
+                    {isVisible("oi_delta") && <TableHead className="text-right">OI变化</TableHead>}
+                    {isVisible("oi_delta_pct") && <TableHead className="text-right">OI变化%</TableHead>}
+                    {isVisible("oi_30d_high") && <TableHead className="text-right">30天最高OI</TableHead>}
+                    {isVisible("notes") && <TableHead>备注</TableHead>}
                     <TableHead className="w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -373,55 +445,85 @@ export default function TrackerPage() {
                         <div className="font-mono font-bold">{c.contract_code}</div>
                         <div className="text-xs text-muted-foreground">{c.underlying}</div>
                       </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            c.option_type === "C"
-                              ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                              : "border-rose-500/30 text-rose-400 bg-rose-500/10"
-                          }`}
-                        >
-                          {c.option_type === "C" ? "Call" : "Put"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={c.status} />
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {c.last_price?.toFixed(2) ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <ChangeCell value={c.price_delta ?? null} />
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {c.volume?.toLocaleString() ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <ChangeCell value={c.volume_delta ?? null} />
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {c.open_interest?.toLocaleString() ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <ChangeCell
-                          value={c.oi_delta ?? null}
-                          invert={c.option_type === "P"}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <ChangeCell
-                          value={c.oi_delta_pct ?? null}
-                          suffix="%"
-                          invert={c.option_type === "P"}
-                        />
-                      </TableCell>
-                      <TableCell className="max-w-xs text-xs text-muted-foreground truncate">
-                        <div className="flex items-center gap-1">
-                          <FileText className="h-3 w-3 shrink-0" />
-                          {c.notes || "-"}
-                        </div>
-                      </TableCell>
+                      {isVisible("option_type") && (
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              c.option_type === "C"
+                                ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                                : "border-rose-500/30 text-rose-400 bg-rose-500/10"
+                            }`}
+                          >
+                            {c.option_type === "C" ? "Call" : "Put"}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      {isVisible("status") && (
+                        <TableCell>
+                          <StatusBadge status={c.status} />
+                        </TableCell>
+                      )}
+                      {isVisible("last_price") && (
+                        <TableCell className="text-right font-mono">
+                          {c.last_price?.toFixed(2) ?? "-"}
+                        </TableCell>
+                      )}
+                      {isVisible("price_delta") && (
+                        <TableCell className="text-right">
+                          <ChangeCell value={c.price_delta ?? null} />
+                        </TableCell>
+                      )}
+                      {isVisible("volume") && (
+                        <TableCell className="text-right font-mono">
+                          {c.volume?.toLocaleString() ?? "-"}
+                        </TableCell>
+                      )}
+                      {isVisible("volume_delta") && (
+                        <TableCell className="text-right">
+                          <ChangeCell value={c.volume_delta ?? null} />
+                        </TableCell>
+                      )}
+                      {isVisible("open_interest") && (
+                        <TableCell className="text-right font-mono">
+                          {c.open_interest?.toLocaleString() ?? "-"}
+                        </TableCell>
+                      )}
+                      {isVisible("prev_oi") && (
+                        <TableCell className="text-right font-mono">
+                          {c.prev_oi?.toLocaleString() ?? "-"}
+                        </TableCell>
+                      )}
+                      {isVisible("oi_delta") && (
+                        <TableCell className="text-right">
+                          <ChangeCell
+                            value={c.oi_delta ?? null}
+                            invert={c.option_type === "P"}
+                          />
+                        </TableCell>
+                      )}
+                      {isVisible("oi_delta_pct") && (
+                        <TableCell className="text-right">
+                          <ChangeCell
+                            value={c.oi_delta_pct ?? null}
+                            suffix="%"
+                            invert={c.option_type === "P"}
+                          />
+                        </TableCell>
+                      )}
+                      {isVisible("oi_30d_high") && (
+                        <TableCell className="text-right font-mono">
+                          {c.oi_30d_high?.toLocaleString() ?? "-"}
+                        </TableCell>
+                      )}
+                      {isVisible("notes") && (
+                        <TableCell className="max-w-xs text-xs text-muted-foreground truncate">
+                          <div className="flex items-center gap-1">
+                            <FileText className="h-3 w-3 shrink-0" />
+                            {c.notes || "-"}
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Button
@@ -492,12 +594,18 @@ export default function TrackerPage() {
                         <TableCell className="font-mono text-xs">{h.snapshot_date}</TableCell>
                         <TableCell className="text-right font-mono">{h.last_price.toFixed(2)}</TableCell>
                         <TableCell className="text-right font-mono">{h.volume.toLocaleString()}</TableCell>
-                        <TableCell className="text-right font-mono">{h.open_interest.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">
-                          <ChangeCell value={h.oi_change} />
+                        <TableCell className="text-right font-mono">
+                          {h.open_interest?.toLocaleString() ?? "-"}
                         </TableCell>
-                        <TableCell className="text-right font-mono">{(h.iv * 100).toFixed(1)}%</TableCell>
-                        <TableCell className="text-right font-mono">${h.premium.toFixed(1)}M</TableCell>
+                        <TableCell className="text-right">
+                          <ChangeCell value={h.oi_change ?? null} />
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {h.iv !== null && h.iv !== undefined ? `${(h.iv * 100).toFixed(1)}%` : "-"}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {h.premium !== null && h.premium !== undefined ? `$${h.premium.toFixed(1)}M` : "-"}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

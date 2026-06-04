@@ -6,12 +6,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import health, screening, signals, backtest, ranking, tracker
+from src.storage.db import init_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
-    # Startup
+    # Startup: ensure all tables exist
+    init_db()
     yield
     # Shutdown
 

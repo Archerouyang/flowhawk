@@ -1,5 +1,6 @@
-"""Yahoo Finance adapter for stock price data."""
+"""Yahoo Finance adapter for stock and option data."""
 
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -7,6 +8,24 @@ import polars as pl
 import yfinance as yf
 
 from src.config import get_config
+
+
+def _contract_to_yf_symbol(contract_code: str) -> tuple[str, str] | None:
+    """Convert our contract code to yfinance option chain lookup.
+
+    Our format: SYMBOL + YYMMDD + C/P + STRIKE  (e.g. MSFT260821C500)
+    yfinance format: SYMBOL + YYMMDD + C/P + STRIKE*1000  (e.g. MSFT260821C00500000)
+    """
+    import re
+    m = re.match(r'^([A-Z]+)(\d{6})([CP])(\d+(?:\.\d+)?)$', contract_code)
+    if not m:
+        return None
+    symbol, date_str, opt_type, strike = m.groups()
+    strike_int = int(float(strike) * 1000)
+    # yfinance symbol format: MSFT260821C00500000
+    yf_symbol = f"{symbol}{date_str}{opt_type}{strike_int:08d}"
+    expiry = f"20{date_str[:2]}-{date_str[2:4]}-{date_str[4:6]}"
+    return yf_symbol, expiry
 
 
 class YFinanceDataSource:
@@ -108,6 +127,66 @@ class YFinanceDataSource:
         if not frames:
             return pl.DataFrame()
         return pl.concat(frames, how="vertical_relaxed")
+
+    def get_option_contract(
+        self, contract_code: str
+    ) -> dict | None:
+        """Fetch real-time quote for a single option contract via yfinance.
+
+        Returns dict with keys: last_price, bid, ask, volume, open_interest,
+        implied_volatility, or None if not found.
+
+        # TODO(debt): yfinance does not provide reliable OI or Greeks.
+        #   When a real-time option data source (Theta Data, Polygon, etc.)
+        #   becomes available, replace this implementation. — 2026-06-04
+        """
+        parsed = _contract_to_yf_symbol(contract_code)
+        if not parsed:
+            return None
+        yf_symbol, expiry = parsed
+
+        # Extract underlying from contract code
+        import re
+
+        m = re.match(r"^([A-Z]+)", contract_code)
+        if not m:
+            return None
+        underlying = m.group(1)
+
+        try:
+            ticker = yf.Ticker(underlying)
+            # Check expiry is available
+            if expiry not in ticker.options:
+                return None
+
+            chain = ticker.option_chain(expiry)
+            # Match by yfinance contract symbol
+            df = chain.calls if "C" in contract_code else chain.puts
+            row = df[df["contractSymbol"] == yf_symbol]
+            if row.empty:
+                return None
+
+            r = row.iloc[0]
+            return {
+                "last_price": float(r.get("lastPrice", 0) or 0),
+                "bid": float(r.get("bid", 0) or 0),
+                "ask": float(r.get("ask", 0) or 0),
+                "volume": int(r.get("volume", 0) or 0),
+                "open_interest": int(r.get("openInterest", 0) or 0),
+                "implied_volatility": float(r.get("impliedVolatility", 0) or 0),
+                "underlying_price": None,  # yfinance option chain doesn't include this
+            }
+        except Exception:
+            return None
+
+    def get_stock_price(self, symbol: str) -> float | None:
+        """Fetch latest stock price."""
+        try:
+            ticker = yf.Ticker(symbol)
+            info = ticker.info
+            return info.get("regularMarketPrice") or info.get("previousClose")
+        except Exception:
+            return None
 
 
 def get_yfinance() -> YFinanceDataSource:

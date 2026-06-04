@@ -228,3 +228,22 @@ def cleanup_old_tracker_snapshots(days: int = 90) -> int:
         )
         conn.commit()
         return cur.rowcount
+
+
+def get_30d_high_oi(contract_codes: list[str]) -> dict[str, int]:
+    """Get the highest open_interest in the last 30 days for each contract."""
+    if not contract_codes:
+        return {}
+    placeholders = ",".join("?" * len(contract_codes))
+    with get_conn() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT contract_code, MAX(open_interest) as max_oi
+            FROM tracker_snapshots
+            WHERE contract_code IN ({placeholders})
+              AND snapshot_date >= date('now', '-30 days')
+            GROUP BY contract_code
+            """,
+            tuple(contract_codes),
+        ).fetchall()
+        return {r["contract_code"]: r["max_oi"] for r in rows}

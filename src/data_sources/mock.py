@@ -174,7 +174,7 @@ def generate_options_snapshot(
                 dte = rng.randint(30, 730)
                 volume = rng.randint(0, 5000)
 
-            strike = round(underlying_price * rng.uniform(0.7, 1.3), 1)
+            strike = int(round(underlying_price * rng.uniform(0.7, 1.3)))
             expiration = snapshot_date + timedelta(days=dte)
 
             moneyness = strike / underlying_price

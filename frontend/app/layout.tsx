@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { OverlayCleanup } from "@/components/overlay-cleanup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-background text-foreground">
         <TooltipProvider>
+          <OverlayCleanup />
           <div className="flex min-h-screen">
             <Sidebar />
             <main className="ml-60 flex-1 p-6">{children}</main>
