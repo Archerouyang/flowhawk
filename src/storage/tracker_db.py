@@ -59,8 +59,8 @@ def update_tracked_contract(
     alert_threshold: float | None = None,
 ) -> dict | None:
     """Update notes/status/alert_threshold. Returns updated record."""
-    updates = []
-    params = []
+    updates: list[str] = []
+    params: list[str | float] = []
     if notes is not None:
         updates.append("notes = ?")
         params.append(notes)

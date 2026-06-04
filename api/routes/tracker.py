@@ -270,18 +270,16 @@ async def snapshot_tracker() -> dict:
             save_tracker_snapshot(
                 contract_code=code,
                 snapshot_date=snapshot_date,
-                last_price=quote.get("last_price"),
-                volume=quote.get("volume"),
-                open_interest=quote.get("open_interest")
-                if quote.get("open_interest")
-                else None,
+                last_price=quote.get("last_price") or 0.0,
+                volume=quote.get("volume") or 0,
+                open_interest=quote.get("open_interest") or 0,
                 oi_change=0,
-                iv=quote.get("implied_volatility"),
+                iv=quote.get("implied_volatility") or 0.0,
                 iv_change_pct=0.0,
-                delta=None,
-                gamma=None,
-                theta=None,
-                vega=None,
+                delta=0.0,
+                gamma=0.0,
+                theta=0.0,
+                vega=0.0,
                 premium=premium,
                 volume_vs_avg=0.0,
             )
@@ -295,28 +293,33 @@ async def snapshot_tracker() -> dict:
             symbols, date.today(), num_contracts_per_symbol=50
         )
         contract_map = {}
-        for symbol, contracts_list in mock_data.items():
-            for oc in contracts_list:
-                mc = _make_code(oc.symbol, oc.expiration, oc.option_type, oc.strike)
-                contract_map[mc] = oc
+        for row in mock_data.iter_rows(named=True):
+            mc = _make_code(
+                row["symbol"], row["expiration"], row["option_type"], row["strike"]
+            )
+            contract_map[mc] = row
         for code in failed:
             oc = contract_map.get(code)
             if oc:
                 save_tracker_snapshot(
                     contract_code=code,
                     snapshot_date=snapshot_date,
-                    last_price=oc.last_price,
-                    volume=oc.volume,
-                    open_interest=oc.open_interest,
+                    last_price=oc["last_price"],
+                    volume=oc["volume"],
+                    open_interest=oc["open_interest"],
                     oi_change=0,
-                    iv=oc.implied_volatility,
+                    iv=oc["implied_volatility"],
                     iv_change_pct=0.0,
-                    delta=oc.delta,
-                    gamma=oc.gamma,
-                    theta=oc.theta,
-                    vega=oc.vega,
-                    premium=oc.premium,
-                    volume_vs_avg=round(oc.volume / max(oc.open_interest * 0.1, 1), 1),
+                    delta=oc["delta"],
+                    gamma=oc["gamma"],
+                    theta=oc["theta"],
+                    vega=oc["vega"],
+                    premium=round(
+                        oc["last_price"] * oc["volume"] * 100 / 1_000_000, 2
+                    ),
+                    volume_vs_avg=round(
+                        oc["volume"] / max(oc["open_interest"] * 0.1, 1), 1
+                    ),
                 )
                 saved += 1
 
