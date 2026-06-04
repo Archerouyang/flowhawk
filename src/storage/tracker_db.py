@@ -1,7 +1,5 @@
 """Tracker database operations — CRUD + snapshots for watched contracts."""
 
-from datetime import date, timedelta
-
 from src.storage.db import get_conn
 
 
@@ -16,7 +14,7 @@ def add_tracked_contract(
 ) -> dict:
     """Add a contract to the tracker. Returns the created record."""
     with get_conn() as conn:
-        cur = conn.execute(
+        conn.execute(
             """
             INSERT INTO tracked_contracts (contract_code, underlying, option_type, strike, expiration, notes, alert_threshold)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -65,14 +63,13 @@ def update_tracked_contract(
         updates.append("alert_threshold = ?")
         params.append(alert_threshold)
 
-    if not updates:
-        row = conn.execute(
-            "SELECT * FROM tracked_contracts WHERE contract_code = ?",
-            (contract_code,),
-        ).fetchone()
-        return dict(row) if row else None
-
     with get_conn() as conn:
+        if not updates:
+            row = conn.execute(
+                "SELECT * FROM tracked_contracts WHERE contract_code = ?",
+                (contract_code,),
+            ).fetchone()
+            return dict(row) if row else None
         conn.execute(
             f"UPDATE tracked_contracts SET {', '.join(updates)} WHERE contract_code = ?",
             (*params, contract_code),

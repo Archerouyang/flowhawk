@@ -27,7 +27,6 @@ import {
   Calendar,
   History,
   Bell,
-  Search,
 } from "lucide-react";
 import { addTracker } from "@/lib/api";
 import {
@@ -232,7 +231,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setError(null);
 
     if (isHistorical) {
       Promise.all([
@@ -273,6 +271,7 @@ export default function DashboardPage() {
           if (cancelled) return;
           setStats(s);
           setSignals(sig.signals);
+          setError(null);
           setLoading(false);
         })
         .catch((err) => {

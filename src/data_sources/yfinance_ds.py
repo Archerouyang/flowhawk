@@ -1,6 +1,5 @@
 """Yahoo Finance adapter for stock and option data."""
 
-from datetime import date
 from pathlib import Path
 from typing import Optional
 

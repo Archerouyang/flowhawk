@@ -7,11 +7,9 @@ from pydantic import BaseModel
 
 from src.data_sources.mock import generate_options_snapshot
 from src.data_sources.yfinance_ds import get_yfinance
-from src.data_sources.longbridge_ds import LongbridgeDataSource
 from src.storage.tracker_db import (
     add_tracked_contract,
     get_tracked_contracts,
-    get_tracked_contract,
     remove_tracked_contract,
     update_tracked_contract,
     get_tracker_history,
@@ -233,7 +231,6 @@ async def snapshot_tracker() -> dict:
         return {"date": snapshot_date, "snapshots": 0}
 
     yf = get_yfinance()
-    lb = LongbridgeDataSource()
 
     # Pre-fetch stock prices for premium calculation
     symbols = list({c["underlying"] for c in contracts})

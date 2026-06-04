@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,6 @@ import {
 import {
   Bell,
   TrendingUp,
-  TrendingDown,
   Eye,
   Trash2,
   FileText,
@@ -38,7 +36,6 @@ import {
   Activity,
   ArrowUpRight,
   ArrowDownRight,
-  Minus,
   Plus,
   SlidersHorizontal,
 } from "lucide-react";
@@ -125,7 +122,6 @@ function HistoryChart({ data }: { data: TrackerSnapshot[] }) {
 }
 
 export default function TrackerPage() {
-  const router = useRouter();
   const [contracts, setContracts] = useState<TrackedContractWithSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<TrackedContractWithSnapshot | null>(null);
@@ -415,7 +411,7 @@ export default function TrackerPage() {
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <Bell className="h-12 w-12 mb-4 opacity-20" />
               <p className="text-lg font-medium">暂无追踪合约</p>
-              <p className="text-sm mt-1">在 Dashboard 或 Screener 页面点击"追踪"按钮添加</p>
+              <p className="text-sm mt-1">在 Dashboard 或 Screener 页面点击「追踪」按钮添加</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
