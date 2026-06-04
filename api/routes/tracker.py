@@ -314,9 +314,7 @@ async def snapshot_tracker() -> dict:
                     gamma=oc["gamma"],
                     theta=oc["theta"],
                     vega=oc["vega"],
-                    premium=round(
-                        oc["last_price"] * oc["volume"] * 100 / 1_000_000, 2
-                    ),
+                    premium=round(oc["last_price"] * oc["volume"] * 100 / 1_000_000, 2),
                     volume_vs_avg=round(
                         oc["volume"] / max(oc["open_interest"] * 0.1, 1), 1
                     ),
