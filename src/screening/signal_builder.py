@@ -9,11 +9,20 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from src.screening.signal_classifier import DetectedSignal, SymbolMeta
+import polars as pl
+
+from src.screening.signal_classifier import DetectedSignal, SignalClassifier, SymbolMeta
 
 
 class SignalBuilder:
     """Build signal result dicts from classifier output and market data."""
+
+    def __init__(self, classifier: SignalClassifier) -> None:
+        """Args:
+            classifier: The SignalClassifier used to detect patterns and
+                compute per-symbol stats.
+        """
+        self._classifier = classifier
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -22,24 +31,33 @@ class SignalBuilder:
     def build(
         self,
         *,
-        detected_signals: list[DetectedSignal],
-        anomaly_by_sym: dict[str, dict[str, Any]],
+        anomaly_df: pl.DataFrame,
         meta_map: dict[str, SymbolMeta],
-        sym_stats: dict[str, dict],
         lb_data: dict[str, dict],
     ) -> list[dict]:
         """Assemble signal result dicts matching the legacy route output.
 
+        Internally runs classification and stat aggregation via the injected
+        classifier so the caller (route) only needs to supply raw inputs.
+
         Args:
-            detected_signals: classified signals from SignalClassifier.
-            anomaly_by_sym: symbol -> highest-volume anomaly row dict.
+            anomaly_df: screened anomalies DataFrame.
             meta_map: symbol -> SymbolMeta.
-            sym_stats: symbol -> aggregate stats dict.
             lb_data: symbol -> Longbridge real-time data dict.
 
         Returns:
             List of signal result dicts.
         """
+        detected_signals = self._classifier.classify(anomaly_df, meta_map)
+        sym_stats = self._classifier.aggregate_symbol_stats(anomaly_df)
+
+        # Build lookup: symbol -> highest-volume anomaly row
+        anomaly_by_sym: dict[str, dict] = {}
+        for row in anomaly_df.to_dicts():
+            sym = row["symbol"]
+            if sym not in anomaly_by_sym or row["volume"] > anomaly_by_sym[sym]["volume"]:
+                anomaly_by_sym[sym] = row
+
         signals: list[dict] = []
         for detected in detected_signals:
             sym = detected.symbol

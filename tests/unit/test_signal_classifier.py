@@ -5,22 +5,13 @@ from datetime import date, timedelta
 import polars as pl
 import pytest
 
+from src.screening.price_sources import FixedPriceSource
 from src.screening.signal_classifier import (
     DetectedSignal,
     SignalClassifier,
     SignalType,
     SymbolMeta,
 )
-
-
-class FixedPriceSource:
-    """Test-only price source returning fixed values."""
-
-    def __init__(self, changes: dict[str, float]) -> None:
-        self._changes = changes
-
-    def get_change(self, symbol: str) -> float:
-        return self._changes.get(symbol, 0.0)
 
 
 class TestSignalClassifierPriceSource:

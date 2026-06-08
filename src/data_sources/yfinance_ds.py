@@ -7,7 +7,7 @@ import polars as pl
 import yfinance as yf
 
 from src.config import get_config
-from src.models.contract_code import to_yfinance as contract_to_yf_symbol
+from src.utils.contract_code import to_yfinance as contract_to_yf_symbol
 
 
 class YFinanceDataSource:

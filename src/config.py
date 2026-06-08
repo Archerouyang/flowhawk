@@ -6,8 +6,6 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-load_dotenv()
-
 _DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 
@@ -58,12 +56,16 @@ def _load_yaml(path: Path) -> dict:
 def create_config(path: str | None = None) -> Config:
     """Factory: create a Config from a YAML file.
 
+    Loads .env variables on first call so credentials are available
+    before config instantiation.
+
     Args:
         path: Path to config YAML. If None, uses default config.yaml.
 
     Returns:
         A new Config instance.
     """
+    load_dotenv()
     if path is None:
         raw = _load_yaml(_DEFAULT_CONFIG_PATH)
     else:

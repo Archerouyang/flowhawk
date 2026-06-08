@@ -116,7 +116,7 @@ class SignalClassifier:
         all_signals: list[DetectedSignal] = []
 
         # Aggregate per-symbol stats first (needed for several detectors)
-        sym_stats = self._aggregate_symbol_stats(anomalies)
+        sym_stats = self.aggregate_symbol_stats(anomalies)
 
         for row in anomalies.iter_rows(named=True):
             sym = row["symbol"]
@@ -361,7 +361,7 @@ class SignalClassifier:
     # Helpers
     # ------------------------------------------------------------------ #
 
-    def _aggregate_symbol_stats(self, anomalies: pl.DataFrame) -> dict[str, dict]:
+    def aggregate_symbol_stats(self, anomalies: pl.DataFrame) -> dict[str, dict]:
         """Compute per-symbol aggregates needed by detectors.
 
         In production these come from real market data (FMP, Theta Data).

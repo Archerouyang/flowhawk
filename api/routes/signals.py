@@ -92,29 +92,15 @@ async def generate_signals(request: SignalRequest) -> SignalResponse:
     lb_results = await asyncio.gather(*[_fetch_symbol(s) for s in request.symbols])
     lb_data: dict[str, dict] = {sym: data for sym, data in lb_results}
 
-    # Classify anomalies into signal types
+    # Delegate full pipeline assembly to SignalBuilder (injected classifier)
     classifier = SignalClassifier(
         price_source=YfinancePriceSource(),
         history_symbols=set(),
     )
-    detected_signals = classifier.classify(anomaly_df, meta_map)  # type: ignore[arg-type]
-
-    # Build lookup: symbol -> highest-volume anomaly row
-    anomaly_by_sym: dict[str, dict] = {}
-    for row in anomaly_df.to_dicts():
-        sym = row["symbol"]
-        if sym not in anomaly_by_sym or row["volume"] > anomaly_by_sym[sym]["volume"]:
-            anomaly_by_sym[sym] = row
-
-    sym_stats = classifier._aggregate_symbol_stats(anomaly_df)
-
-    # Delegate domain assembly to SignalBuilder
-    builder = SignalBuilder()
+    builder = SignalBuilder(classifier=classifier)
     built = builder.build(
-        detected_signals=detected_signals,
-        anomaly_by_sym=anomaly_by_sym,
+        anomaly_df=anomaly_df,
         meta_map=meta_map,
-        sym_stats=sym_stats,
         lb_data=lb_data,
     )
 

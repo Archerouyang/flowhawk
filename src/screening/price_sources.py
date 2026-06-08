@@ -16,7 +16,13 @@ class FixedPriceSource:
 
 
 class YfinancePriceSource:
-    """Production price source backed by yfinance."""
+    """Production price source backed by yfinance.
+
+    # TODO(debt): yfinance is not a real-time data source and introduces
+    #   network latency per symbol. Replace with a streaming or batched
+    #   quote provider (Theta Data, Polygon, Longbridge REST) once
+    #   credentials and rate limits are confirmed. — 2026-06-08
+    """
 
     def __init__(self) -> None:
         # Lazy import to avoid heavy dependency at module load time

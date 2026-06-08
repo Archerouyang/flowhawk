@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from src.models.contract_code import encode, decode, to_yfinance
+from src.utils.contract_code import encode, decode, to_yfinance
 
 
 class TestContractCodeEncodeDecode:

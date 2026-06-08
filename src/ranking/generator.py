@@ -13,7 +13,7 @@ import numpy as np
 import polars as pl
 
 from src.data_sources.mock import SymbolMeta
-from src.models.contract_code import encode as encode_contract_code
+from src.utils.contract_code import encode as encode_contract_code
 
 
 @dataclass(frozen=True, slots=True)
