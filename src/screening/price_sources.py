@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from src.screening.signal_classifier import PriceDataSource
-
 
 class FixedPriceSource:
     """Test-only price source returning pre-configured fixed values."""

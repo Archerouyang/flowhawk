@@ -7,7 +7,6 @@ independently of the HTTP transport layer.
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
 
 import polars as pl
 

@@ -176,16 +176,6 @@ export default function TrackerPage() {
     return new Set(ALL_COLUMNS.map((c) => c.key));
   });
 
-  function toggleColumn(key: ColumnKey) {
-    setVisibleColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify([...next]));
-      return next;
-    });
-  }
-
   const isVisible = (key: ColumnKey) => visibleColumns.has(key);
 
   useEffect(() => {

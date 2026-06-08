@@ -172,10 +172,8 @@ class RankingGenerator:
         exp = row["expiration"]
         if isinstance(exp, date):
             exp_str = exp.strftime("%Y-%m-%d")
-            exp_code = exp.strftime("%y%m%d")
         else:
             exp_str = str(exp)
-            exp_code = exp_str[2:4] + exp_str[5:7] + exp_str[8:10]
 
         option_type = row["option_type"]
         contract_code = encode_contract_code(sym, exp, option_type, strike)
