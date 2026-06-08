@@ -73,6 +73,38 @@ See `README.md` for full architecture and `QUICKSTART.md` for setup.
 
 ---
 
+## 活跃 Spec（Spec-Driven Development）
+
+当前正在执行的 spec。任何涉及相关模块的开发必须先读对应 spec，开发完成后更新验收状态。
+
+| Spec | 状态 | 路径 |
+|------|------|------|
+| Tracker MVP | 开发中 | `docs/specs/tracker-mvp.md` |
+
+**Spec 变更流程：**
+1. 开发前通读对应 spec
+2. 如需调整范围，先更新 spec 再改代码
+3. 验收项完成后在 spec 中打勾
+4. 所有 spec 完成后归档到 `docs/specs/archive/`
+
+---
+
 ## Domain Context
 
 See `docs/CONTEXT.md` for glossary, data sources, strategy classification, and key constraints.
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues. Use `gh` CLI for all operations. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo. Read `docs/CONTEXT.md` for domain glossary and `docs/adr/` for architectural decisions. See `docs/agents/domain.md`.

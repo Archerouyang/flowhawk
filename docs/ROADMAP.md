@@ -125,5 +125,5 @@
 | Source | Cost | Status | Priority |
 |--------|------|--------|----------|
 | FMP | Free tier (250 req/day) | Configured | Phase 3 |
-| Theta Data | ~$25/mo | Configured | Phase 3 |
+| Theta Data | ~$80/mo (Standard) | Configured | Phase 3 |
 | Mock | Free | Active | Phase 1-2 |

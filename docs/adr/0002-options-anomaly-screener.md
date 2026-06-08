@@ -18,7 +18,7 @@ Proposed → Approved
 | 语言 | Python 3.11+ | 量化生态最成熟 |
 | 包管理 | uv | 项目已有，极速依赖管理 |
 | 数据处理 | Polars | 比 Pandas 快 10-50x，处理百万级期权合约必备 |
-| 数据源1 | Theta Data Python SDK | EOD 全市场快照 + Greeks，$25/月 |
+| 数据源1 | Theta Data Python SDK | EOD 全市场快照 + Greeks + Trade Streams，$80/月 (Standard) |
 | 数据源2 | yfinance | 正股 K 线（免费） |
 | 缓存/存储 | Parquet + DuckDB | 本地列式存储，查询极快 |
 | API 服务 | FastAPI | 为前端提供 REST API |
@@ -259,7 +259,7 @@ CREATE TABLE trade_recommendations (
 - Polars 处理百万级数据速度极快
 - Streamlit 最快路径搭建好看前端
 - DuckDB 本地查询无网络依赖
-- Theta Data $25/月性价比最高
+- Theta Data Standard $80/月，含 Option Chain Snapshot + Trade Streams
 
 ### Negative
 - Streamlit 不适合多用户并发（但本项目是单用户本地工具，不是问题）

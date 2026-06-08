@@ -171,20 +171,29 @@ async def list_tracker(status: str | None = None) -> TrackerListResponse:
             premium=snap["premium"] if snap else None,
             volume_vs_avg=snap["volume_vs_avg"] if snap else None,
             # prev day
-            prev_oi=prev["open_interest"] if prev else None,
-            prev_volume=prev["volume"] if prev else None,
-            prev_price=prev["last_price"] if prev else None,
-            oi_delta=(snap["open_interest"] - prev["open_interest"])
-            if snap and prev
-            else None,
-            volume_delta=(snap["volume"] - prev["volume"]) if snap and prev else None,
-            price_delta=(snap["last_price"] - prev["last_price"])
-            if snap and prev
-            else None,
+            prev_oi=prev.get("open_interest") if prev else None,
+            prev_volume=prev.get("volume") if prev else None,
+            prev_price=prev.get("last_price") if prev else None,
+            oi_delta=_safe_delta(
+                snap.get("open_interest") if snap else None,
+                prev.get("open_interest") if prev else None,
+            ),
+            volume_delta=_safe_delta(
+                snap.get("volume") if snap else None,
+                prev.get("volume") if prev else None,
+            ),
+            price_delta=_safe_delta(
+                snap.get("last_price") if snap else None,
+                prev.get("last_price") if prev else None,
+            ),
             oi_delta_pct=_pct(
-                snap["open_interest"] - prev["open_interest"], prev["open_interest"]
+                _safe_delta(
+                    snap.get("open_interest") if snap else None,
+                    prev.get("open_interest") if prev else None,
+                ),
+                prev.get("open_interest") if prev else None,
             )
-            if snap and prev and prev["open_interest"]
+            if snap and prev and prev.get("open_interest") is not None
             else None,
             oi_30d_high=high_oi.get(code),
         )
@@ -349,6 +358,13 @@ def _row_to_item(row: dict) -> TrackerItem:
         status=row["status"],
         alert_threshold=row["alert_threshold"],
     )
+
+
+def _safe_delta(a: float | int | None, b: float | int | None) -> float | int | None:
+    """Compute a - b safely, returning None if either operand is None."""
+    if a is None or b is None:
+        return None
+    return a - b
 
 
 def _pct(delta: float, base: float) -> float | None:

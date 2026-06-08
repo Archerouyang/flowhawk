@@ -260,7 +260,12 @@ export default function TrackerPage() {
       });
       setNewCode("");
       setNewNotes("");
+      // Clear cache so new contract appears immediately
+      invalidateCache("/tracker");
       await loadTracker();
+    } catch (err) {
+      console.error("Failed to add tracker:", err);
+      alert("添加失败: " + (err instanceof Error ? err.message : "未知错误"));
     } finally {
       setAdding(false);
     }
@@ -384,12 +389,12 @@ export default function TrackerPage() {
           </CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger
-              render={
-                <Button variant="outline" size="sm">
+              render={(props) => (
+                <Button variant="outline" size="sm" {...props}>
                   <SlidersHorizontal className="mr-2 h-4 w-4" />
                   列设置
                 </Button>
-              }
+              )}
             />
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel>显示列</DropdownMenuLabel>
@@ -398,7 +403,16 @@ export default function TrackerPage() {
                 <DropdownMenuCheckboxItem
                   key={col.key}
                   checked={isVisible(col.key)}
-                  onCheckedChange={() => toggleColumn(col.key)}
+                  closeOnClick={false}
+                  onCheckedChange={(checked) => {
+                    setVisibleColumns((prev) => {
+                      const next = new Set(prev);
+                      if (checked) next.add(col.key);
+                      else next.delete(col.key);
+                      localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify([...next]));
+                      return next;
+                    });
+                  }}
                 >
                   {col.label}
                 </DropdownMenuCheckboxItem>
