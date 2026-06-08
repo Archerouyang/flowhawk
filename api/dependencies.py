@@ -1,11 +1,10 @@
 """Shared FastAPI dependencies."""
 
-from functools import lru_cache
+from fastapi import Request
 
-from src.config import get_config
+from src.config import Config
 
 
-@lru_cache
-def get_app_config():
-    """Get cached application config."""
-    return get_config()
+def get_app_config(request: Request) -> Config:
+    """Get application config from app state."""
+    return request.app.state.config

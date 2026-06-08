@@ -7,25 +7,7 @@ import polars as pl
 import yfinance as yf
 
 from src.config import get_config
-
-
-def _contract_to_yf_symbol(contract_code: str) -> tuple[str, str] | None:
-    """Convert our contract code to yfinance option chain lookup.
-
-    Our format: SYMBOL + YYMMDD + C/P + STRIKE  (e.g. MSFT260821C500)
-    yfinance format: SYMBOL + YYMMDD + C/P + STRIKE*1000  (e.g. MSFT260821C00500000)
-    """
-    import re
-
-    m = re.match(r"^([A-Z]+)(\d{6})([CP])(\d+(?:\.\d+)?)$", contract_code)
-    if not m:
-        return None
-    symbol, date_str, opt_type, strike = m.groups()
-    strike_int = int(float(strike) * 1000)
-    # yfinance symbol format: MSFT260821C00500000
-    yf_symbol = f"{symbol}{date_str}{opt_type}{strike_int:08d}"
-    expiry = f"20{date_str[:2]}-{date_str[2:4]}-{date_str[4:6]}"
-    return yf_symbol, expiry
+from src.models.contract_code import to_yfinance as contract_to_yf_symbol
 
 
 class YFinanceDataSource:
@@ -138,10 +120,10 @@ class YFinanceDataSource:
         #   When a real-time option data source (Theta Data, Polygon, etc.)
         #   becomes available, replace this implementation. — 2026-06-04
         """
-        parsed = _contract_to_yf_symbol(contract_code)
-        if not parsed:
+        try:
+            yf_symbol, expiry = contract_to_yf_symbol(contract_code)
+        except ValueError:
             return None
-        yf_symbol, expiry = parsed
 
         # Extract underlying from contract code
         import re

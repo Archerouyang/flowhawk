@@ -5,8 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum
+from typing import Protocol
 
 import polars as pl
+
+
+class PriceDataSource(Protocol):
+    """Seam for injecting per-symbol price change data."""
+
+    def get_change(self, symbol: str) -> float:
+        """Return the daily price change ratio for the given symbol."""
+        ...
 
 
 class SignalType(str, Enum):
@@ -75,12 +84,19 @@ class SignalClassifier:
     VOLUME_SPIKE = 10.0
     PRICE_MOVE_GAMMA = 0.15
 
-    def __init__(self, history_symbols: set[str] | None = None):
+    def __init__(
+        self,
+        *,
+        price_source: PriceDataSource,
+        history_symbols: set[str] | None = None,
+    ):
         """
         Args:
+            price_source: source of per-symbol daily price changes.
             history_symbols: symbols that have appeared in anomalies
                 within the last 90 days. Used for First Timer detection.
         """
+        self._price_source = price_source
         self._history = history_symbols or set()
 
     # ------------------------------------------------------------------ #
@@ -401,11 +417,8 @@ class SignalClassifier:
             hottest_vol = hottest["volume"][0] if hottest.height else 0
             vol_conc = hottest_vol / total_vol if total_vol > 0 else 0.0
 
-            # Mock price change (in production from stock data)
-            # Random small move for mock; in reality this is (close - prev_close)/prev_close
-            import random
-
-            price_change = random.gauss(0.0, 0.02)
+            # Price change from injected source (production: yfinance / FMP / Theta Data)
+            price_change = self._price_source.get_change(sym)
 
             stats[sym] = {
                 "total_volume": total_vol,

@@ -13,6 +13,7 @@ import numpy as np
 import polars as pl
 
 from src.data_sources.mock import SymbolMeta
+from src.models.contract_code import encode as encode_contract_code
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,7 +178,7 @@ class RankingGenerator:
             exp_code = exp_str[2:4] + exp_str[5:7] + exp_str[8:10]
 
         option_type = row["option_type"]
-        contract_code = f"{sym}{exp_code}{option_type}{int(strike)}"
+        contract_code = encode_contract_code(sym, exp, option_type, strike)
 
         last_price = float(row["last_price"])
         bid = float(row["bid"])

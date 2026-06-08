@@ -25,6 +25,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { getSignals, type ClassifiedSignal } from "@/lib/api";
+import { tryDecodeContractCode } from "@/lib/contractCode";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -88,17 +89,13 @@ function parseContractCode(code: string): {
   option_type: "C" | "P";
   strike: number;
 } | null {
-  const m = code.match(/^([A-Z]+)(\d{6})([CP])([\d.]+)$/);
-  if (!m) return null;
-  const [, sym, dateStr, optType, strikeStr] = m;
-  const yy = dateStr.slice(0, 2);
-  const mm = dateStr.slice(2, 4);
-  const dd = dateStr.slice(4, 6);
+  const decoded = tryDecodeContractCode(code);
+  if (!decoded) return null;
   return {
-    underlying: sym,
-    expiry: `20${yy}-${mm}-${dd}`,
-    option_type: optType as "C" | "P",
-    strike: parseFloat(strikeStr),
+    underlying: decoded.symbol,
+    expiry: decoded.expiration,
+    option_type: decoded.optionType,
+    strike: decoded.strike,
   };
 }
 
@@ -247,16 +244,14 @@ function buildSignalAnalysis(signal: ClassifiedSignal): Analysis {
 
 /** Match contract code to ClassifiedSignal */
 function matchSignal(code: string, signals: ClassifiedSignal[]): ClassifiedSignal | null {
-  const m = code.match(/^([A-Z]+)(\d{6})([CP])([\d.]+)$/);
-  if (!m) return null;
-  const [, sym, , optType, strikeStr] = m;
-  const strike = parseFloat(strikeStr);
+  const decoded = tryDecodeContractCode(code);
+  if (!decoded) return null;
   return (
     signals.find(
       (s) =>
-        s.symbol === sym &&
-        s.option_type === optType &&
-        Math.abs(s.strike - strike) < 0.01
+        s.symbol === decoded.symbol &&
+        s.option_type === decoded.optionType &&
+        Math.abs(s.strike - decoded.strike) < 0.01
     ) || null
   );
 }

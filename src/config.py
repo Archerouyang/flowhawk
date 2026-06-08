@@ -8,24 +8,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-_CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
+_DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
 
 
 class Config:
-    """Singleton configuration."""
+    """Configuration container — plain class, no singleton."""
 
-    _instance = None
+    def __init__(self, raw: dict | None = None) -> None:
+        if raw is None:
+            raw = _load_yaml(_DEFAULT_CONFIG_PATH)
+        self._apply(raw)
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._load()
-        return cls._instance
-
-    def _load(self) -> None:
-        with open(_CONFIG_PATH) as f:
-            raw = yaml.safe_load(f)
-
+    def _apply(self, raw: dict) -> None:
         self.data_sources = raw.get("data_sources", {})
         self.data = raw.get("data", {})
         self.screening = raw.get("screening", {})
@@ -56,5 +50,34 @@ class Config:
         return node
 
 
+def _load_yaml(path: Path) -> dict:
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
+
+
+def create_config(path: str | None = None) -> Config:
+    """Factory: create a Config from a YAML file.
+
+    Args:
+        path: Path to config YAML. If None, uses default config.yaml.
+
+    Returns:
+        A new Config instance.
+    """
+    if path is None:
+        raw = _load_yaml(_DEFAULT_CONFIG_PATH)
+    else:
+        raw = _load_yaml(Path(path))
+    return Config(raw)
+
+
+# Backward-compatible lazy singleton
+_config_instance: Config | None = None
+
+
 def get_config() -> Config:
-    return Config()
+    """Return the default Config instance (lazy singleton for compatibility)."""
+    global _config_instance
+    if _config_instance is None:
+        _config_instance = create_config()
+    return _config_instance

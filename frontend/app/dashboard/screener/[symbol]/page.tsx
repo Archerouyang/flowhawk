@@ -20,6 +20,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { MOCK_CLASSIFIED_SIGNALS } from "@/lib/api";
+import { encodeContractCode } from "@/lib/contractCode";
 import IVTermStructure from "./components/iv-term-structure";
 import TradeTimeline from "./components/trade-timeline";
 import GreeksHeatmap from "./components/greeks-heatmap";
@@ -82,7 +83,7 @@ function generateMockTrades(symbol: string): LargeTrade[] {
     const isCall = seededRandom(seed + 7) > 0.35;
     const strike = Math.round(basePrice * (0.85 + seededRandom(seed + 8) * 0.3) / 5) * 5;
     const expiry = expiries[Math.floor(seededRandom(seed + 9) * expiries.length)];
-    const expShort = expiry.replace(/-/g, "").slice(2);
+    const optType = isCall ? "C" : "P";
 
     trades.push({
       time: `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`,
@@ -92,8 +93,8 @@ function generateMockTrades(symbol: string): LargeTrade[] {
       premium: Number(premium.toFixed(2)),
       type: types[typeIdx],
       exchange: exchanges[Math.floor(seededRandom(seed + 6) * exchanges.length)],
-      contract_code: `${symbol}${expShort}${isCall ? "C" : "P"}${strike}`,
-      option_type: isCall ? "C" : "P",
+      contract_code: encodeContractCode(symbol, expiry, optType, strike),
+      option_type: optType,
       strike,
       expiration: expiry,
     });
@@ -113,15 +114,15 @@ function generateMockChain(symbol: string): ChainEntry[] {
     const isCall = seededRandom(seed) > 0.3;
     const strike = Math.round(basePrice * (0.8 + seededRandom(seed + 1) * 0.5) / 5) * 5;
     const expiry = expiries[Math.floor(seededRandom(seed + 2) * expiries.length)];
-    const expShort = expiry.replace(/-/g, "").slice(2);
+    const optType = isCall ? "C" : "P";
     const price = 0.5 + seededRandom(seed + 3) * 30;
     const change = (seededRandom(seed + 4) - 0.35) * 20;
     const vol = 1200 + Math.floor(seededRandom(seed + 5) * 25000);
     const vsAvg = 1.5 + seededRandom(seed + 6) * 15;
 
     entries.push({
-      contract_code: `${symbol}${expShort}${isCall ? "C" : "P"}${strike}`,
-      option_type: isCall ? "C" : "P",
+      contract_code: encodeContractCode(symbol, expiry, optType, strike),
+      option_type: optType,
       strike,
       expiration: expiry,
       last_price: Number(price.toFixed(2)),

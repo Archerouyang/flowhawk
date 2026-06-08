@@ -1,0 +1,57 @@
+# Test fixture configuration
+data_sources:
+  theta_data:
+    enabled: false
+    base_url: "https://test.thetadata.net"
+    cache_dir: "./tests/data/cache/theta"
+
+  yfinance:
+    enabled: false
+    cache_dir: "./tests/data/cache/yahoo"
+    period: "1mo"
+    interval: "1d"
+
+data:
+  raw_dir: "./tests/data/raw"
+  processed_dir: "./tests/data/processed"
+  cache_dir: "./tests/data/cache"
+  db_path: "./tests/data/processed/test.db"
+
+screening:
+  options:
+    min_voi_ratio: 2.0
+    min_volume_spike: 3.0
+    min_premium_usd: 50000
+    max_iv_rank: 60.0
+    min_dte: 90
+    max_dte: 365
+    min_delta: 0.40
+    max_delta: 0.90
+    min_contract_volume: 100
+    top_n_anomalies: 10
+
+  technical:
+    min_price_vs_sma200: 0.9
+    min_price_vs_sma20: 0.9
+    min_volume_vs_avg: 1.0
+    rsi_min: 20
+    rsi_max: 80
+    max_atr_ratio: 0.10
+
+  leaps:
+    min_dte: 90
+    target_delta_min: 0.60
+    target_delta_max: 0.85
+    max_theta_ratio: 0.005
+    max_bid_ask_spread: 0.10
+    max_iv_percentile: 60
+    top_n_recommendations: 1
+
+dashboard:
+  port: 9999
+  theme: "light"
+  page_title: "Test Screener"
+
+scheduler:
+  scan_time: "09:00"
+  timezone: "UTC"
