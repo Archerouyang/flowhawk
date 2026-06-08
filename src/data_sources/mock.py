@@ -1,23 +1,11 @@
 """Mock data generator for development without API subscriptions."""
 
 import random
-from dataclasses import dataclass
 from datetime import date, timedelta
 
 import polars as pl
 
-
-@dataclass(frozen=True, slots=True)
-class SymbolMeta:
-    """Per-symbol metadata for signal classification."""
-
-    symbol: str
-    market_cap: float  # billions
-    sector: str
-    is_etf: bool
-    avg_volume_30d: float
-    category: str  # "big_cap" | "small_cap" | "etf"
-
+from src.screening.signal_classifier import SymbolMeta
 
 # Sector pool for realistic mock data
 _SECTORS = [

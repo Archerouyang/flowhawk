@@ -35,6 +35,7 @@ class SymbolMeta:
     sector: str
     is_etf: bool
     avg_volume_30d: float
+    category: str = ""  # "big_cap" | "small_cap" | "etf"
 
 
 @dataclass(frozen=True, slots=True)

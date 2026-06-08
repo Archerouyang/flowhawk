@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 
 class FixedPriceSource:
     """Test-only price source returning pre-configured fixed values."""
@@ -24,7 +26,7 @@ class YfinancePriceSource:
 
     def __init__(self) -> None:
         # Lazy import to avoid heavy dependency at module load time
-        self._yf = None
+        self._yf: Any | None = None
 
     def get_change(self, symbol: str) -> float:
         """Fetch daily price change from yfinance.

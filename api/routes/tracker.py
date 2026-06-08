@@ -92,8 +92,8 @@ class TrackedContractWithSnapshot(BaseModel):
     prev_oi: int | None
     prev_volume: int | None
     prev_price: float | None
-    oi_delta: int | None
-    volume_delta: int | None
+    oi_delta: float | int | None
+    volume_delta: float | int | None
     price_delta: float | None
     oi_delta_pct: float | None
     oi_30d_high: int | None
@@ -367,7 +367,7 @@ def _safe_delta(a: float | int | None, b: float | int | None) -> float | int | N
     return a - b
 
 
-def _pct(delta: float, base: float) -> float | None:
-    if base and base != 0:
-        return round(delta / base * 100, 2)
-    return None
+def _pct(delta: float | int | None, base: float | int | None) -> float | None:
+    if delta is None or base is None or base == 0:
+        return None
+    return round(delta / base * 100, 2)
