@@ -18,8 +18,8 @@ class SignalBuilder:
 
     def __init__(self, classifier: SignalClassifier) -> None:
         """Args:
-            classifier: The SignalClassifier used to detect patterns and
-                compute per-symbol stats.
+        classifier: The SignalClassifier used to detect patterns and
+            compute per-symbol stats.
         """
         self._classifier = classifier
 
@@ -54,7 +54,10 @@ class SignalBuilder:
         anomaly_by_sym: dict[str, dict] = {}
         for row in anomaly_df.to_dicts():
             sym = row["symbol"]
-            if sym not in anomaly_by_sym or row["volume"] > anomaly_by_sym[sym]["volume"]:
+            if (
+                sym not in anomaly_by_sym
+                or row["volume"] > anomaly_by_sym[sym]["volume"]
+            ):
                 anomaly_by_sym[sym] = row
 
         signals: list[dict] = []

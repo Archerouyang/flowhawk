@@ -65,7 +65,9 @@ def decode(contract_code: str) -> DecodedContract:
     try:
         expiration = date(2000 + yy, mm, dd)
     except ValueError as exc:
-        raise ValueError(f"Invalid expiration date in contract code: {contract_code}") from exc
+        raise ValueError(
+            f"Invalid expiration date in contract code: {contract_code}"
+        ) from exc
 
     strike = float(strike_str)
 

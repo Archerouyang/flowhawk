@@ -15,6 +15,7 @@ data/cache/
 *.csv
 *.pkl
 *.parquet
+*.db
 
 # Jupyter
 .ipynb_checkpoints/
